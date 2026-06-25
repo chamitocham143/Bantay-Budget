@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8" />
+
+<meta
+ name="viewport"
+ content="width=device-width,initial-scale=1"
+/>
+
+<title>Reset Password</title>
+
+<link rel="stylesheet" href="style.css?=v3.1" />
+
+</head>
+
+<style> 
+body{
+  margin:0;
+  background:#111827;
+  color:#fff;
+  padding: 20px;
+  padding-bottom: 60px;
+}
+.card {
+background:rgba(0, 0, 0, 0);
+color: #fff;
+padding-bottom: 30px;
+}
+
+</style>
+
+<body>
+  
+  <h1>Bantay Budget</h1>
+
+<div class="card auth-card" >
+
+  <h2>Reset Password</h2>
+
+  <input
+    type="password"
+    id="newPassword"
+    placeholder="New Password"
+  />
+
+  <input
+    type="password"
+    id="confirmPassword"
+    placeholder="Retype Password"
+  />
+
+  <button
+    id="resetPasswordBtn"
+    class="green"
+  >
+    <strong>Update Password</strong>
+  </button>
+
+</div>
+    
+    <footer class="footer">
+  © <span id="year"></span> The Arrows Fam. All Rights Reserved.
+</footer>
+
+<script type="module" src="reset.js"></script>
+
+</body>
+</html>

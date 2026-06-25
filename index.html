@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta
+  name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Bantay Budget</title>
+  <link rel="manifest" href="manifest.json"/>
+  <meta name="theme-color" content="#111827"/>
+  <meta name="theme-color" content="#14532d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+  <link rel="icon" type="image/svg+xml" href="icons/favicon.svg">
+  <link rel="apple-touch-icon" href="icons/icon-512.png">
+  <link
+ rel="stylesheet"
+ href="style.css?v=1.0.0"
+/>
+</head>
+<body>
+  
+  <!-- Splash Screen -->
+  
+<div id="splashScreen">
+  <div class="splash-logo-container">
+    <img src="icons/icon-512.png" class="splash-logo" />
+  </div>
+  <div class="splash-title">Bantay Budget</div>
+  <div class="splash-subtitle">Loading</div>
+  <div class="splash-dots">
+    <span></span><span></span><span></span>
+  </div>
+</div>
+
+  <!-- Pull Loader -->
+
+ <div class="pull-loader" id="pullLoader">
+  <div class="pull-loader-content">
+    <i class="fas fa-rotate-right spinner-icon"></i>
+  </div>
+</div>
+
+  <div class="app">
+    <section id="authSection" class="card" style="position:fixed;">
+       <div class="app-name" id="AppName">
+      <div class="logo-container">
+    <img
+      src="icons/bantay-budget-logo.PNG"
+      class="top-logo"
+      alt="Bantay Budget"
+    >
+  </div>
+    </div>
+      <p class="getStarted" >Sign in to get started</p>
+      <input type="email" id="email" placeholder="Email" required />
+       <div class="password-wrapper">
+      <input
+    type="password"
+    id="password"
+    placeholder="Password"
+    required
+    />
+
+  <i
+    id="togglePassword"
+    class="fa-regular fa-eye password-toggle"
+  ></i>
+
+</div>
+       <p id="forgotPassword" class="forgot-link">
+        Forgot Password?
+      </p>
+      <button id="loginBtn" class="green">Sign in</button>
+      <p id="noAccountYet" > No account yet? </p>
+      <button id="registerBtn" class="green"> 
+      Create Account
+      </button>
+         <button
+       id="resendVerificationBtn"
+       style="display:none;">
+        <strong>Resend Verification Email</strong>
+        </button>
+    </section>
+
+    <main id="mainApp" style="display:none;">
+
+    <div class="topbar">
+  <div class="logo-container">
+    <img
+      src="icons/bantay-budget-logo.PNG"
+      class="top-logo"
+      alt="Bantay Budget"
+    >
+  </div>
+  <button id="notificationBtn" class="notification-btn">
+  <i class="fa-regular fa-bell"></i>
+  <span id="notificationBadge">0</span>
+</button>
+  <button id="profileBtn" class="profile-btn">
+    R
+  </button>
+</div>
+       <p id="welcomeUser" class="welcome-user"></p>
+   
+  <div class="dashboard-header-row">
+  <div class="dashboard-title">
+    <p class="overview-title" id="overview">Here's your financial overview</p>
+  </div>
+
+  <div class="header-month-filter">
+    <span class="month-icon">📅</span>
+    <input type="month" id="filterMonth" />
+  </div>
+</div>
+
+
+<section class="summary-dashboard">
+  <div class="summary-hero-grid">
+    <div class="summary-card summary-hero pending">
+      <div class="summary-head">
+        <div class="summary-icon">⏳</div>
+        <span class="summary-pill">Needs Attention</span>
+      </div>
+      <h3>Total Pending</h3>
+      <h2 id="totalPending">$0.00</h2>
+      <div class="summary-line"></div>
+      <p>Pending payments to settle</p>
+    </div>
+
+    <div class="summary-card summary-hero remaining">
+      <div class="summary-head">
+        <div class="summary-icon">📈</div>
+        <span class="summary-pill">Available</span>
+      </div>
+      <h3>Remaining Balance</h3>
+      <h2 id="availableBalance">$0.00</h2>
+      <div class="summary-line"></div>
+      <p>After all allocations</p>
+    </div>
+  </div>
+
+  <div class="summary-small-grid">
+    
+      <div class="summary-card income">
+  <div class="small-card-header">
+    <div class="summary-icon">💰</div>
+
+    <div class="small-card-info">
+      <h3>Total Income</h3>
+      <h2 id="totalInflows">$0.00</h2>
+      <p>All income received</p>
+    </div>
+  </div>
+</div>
+
+      <div class="summary-card paid">
+  <div class="small-card-header">
+    <div class="summary-icon">✅</div>
+
+    <div class="small-card-info">
+      <h3>Total Paid</h3>
+      <h2 id="totalPaid">$0.00</h2>
+      <p>All paid expenses</p>
+    </div>
+  </div>
+</div>
+
+  <div class="summary-card hold">
+  <div class="small-card-header">
+    <div class="summary-icon">⏸️</div>
+
+    <div class="small-card-info">
+      <h3>Total On Hold</h3>
+      <h2 id="totalOnHold">$0.00</h2>
+      <p>On hold expenses</p>
+    </div>
+  </div>
+</div>
+
+   <div class="summary-card allocable">
+  <div class="small-card-header">
+    <div class="summary-icon">📊</div>
+
+    <div class="small-card-info">
+      <h3>Allocable Balance</h3>
+      <h2 id="allocableBalance">$0.00</h2>
+      <p>Available to allocate</p>
+    </div>
+  </div>
+</div>
+    
+  </div>
+  
+ 
+  <!-- TIP SECTION -->
+  
+    <div class="summary-tip">
+    <div class="tip-icon" id="tipIcon">💡</div>
+     <p id="summaryTipText">
+      <strong>Tip:</strong> Keep tracking your expenses to maintain a healthy balance.
+    </p>
+    <div class="tip-plant">🌱</div>
+  </div>
+  
+</section>
+
+<!-- END OF SUMMARY DASHBOARD SECTION -->
+
+
+<div class="segment-filter">
+
+  <button id="showInflowsBtn" class="segment-btn">
+    <span class="segment-icon">💵</span>
+    <span>Income</span>
+  </button>
+
+  <button id="showExpensesBtn" class="segment-btn">
+    <span class="segment-icon">📋</span>
+    <span>Expenses</span>
+  </button>
+
+  <button id="showRecurringBtn" class="segment-btn active">
+    <span class="segment-icon">🔁</span>
+    <span>Recurring</span>
+  </button>
+
+</div>
+
+
+<!-- INFLOWS SECTION -->
+
+ <section class="card" id="inflowsSection">
+  <h3>Inflows</h3>
+  <div id="inflowsList"></div>
+</section>
+
+
+<!-- EXPENSES SECTION -->
+    <section class="card" id="expensesSection">
+      <h3 id="expensesTitle">Expenses</h3>
+      <div id="expensesList"></div>
+    </section>
+      
+    </main>
+    
+    <div
+  class="fab-container hidden"
+  id="fabContainer" >
+
+  <button
+    id="openInflowModal"
+    class="fab fab-green"
+  >
+    💰
+  </button>
+
+  <button
+    id="openExpenseModal"
+    class="fab fab-red"
+  >
+    💸
+  </button>
+
+</div>
+
+    
+    <footer class="footer">
+  © <span id="year"></span> The Arrows Fam. All Rights Reserved.
+</footer>
+    
+  </div>
+
+<div id="inflowModal" class="modal hidden">
+
+  <div class="modal-content">
+
+    <h2>Add Inflow</h2>
+
+    <input type="date" id="inflowDate" required />
+
+    <input
+      type="text"
+      id="inflowDesc"
+      placeholder="Description"
+      required
+    />
+
+    <input
+      type="number"
+      id="inflowAmount"
+      placeholder="Amount"
+      required
+    />
+
+    <button
+      id="addInflowBtn"
+      class="green"
+    >
+      Save 💾
+    </button>
+
+    <button
+      onclick="closeModal('inflowModal')"
+    >
+         <i class="fa-regular fa-circle-xmark" style="font-size:24px"></i>
+    </button>
+
+  </div>
+
+</div>
+
+<div id="expenseModal" class="modal hidden">
+  <div class="modal-content">
+    <h2>Add Expense</h2>
+    <input type="date" id="expenseDate" required />
+    <input
+      type="text"
+      id="expenseDesc"
+      placeholder="Description"
+      required
+    />
+
+     <select id="expenseStatus">
+        <option value="ON HOLD">On Hold</option>
+        <option value="PENDING">Pending</option>
+        <option value="PAID">Paid</option>
+      </select>
+
+    <input
+      type="number"
+      id="expenseAmount"
+      placeholder="Amount"
+      required
+    />
+  
+<label class="recurring-toggle">
+
+  <input
+    type="checkbox"
+    id="isRecurring"
+  >
+
+  <span>Recurring Expense?</span>
+
+</label>
+
+<div
+  id="recurringDayContainer"
+  style="display:none !important;"
+>
+  <select id="recurringDay">
+    <option value="">Due Date</option>
+  </select>
+  
+</div>
+
+    <button
+      id="addExpenseBtn"
+      class="red"
+    >
+      Save 💾
+    </button>
+
+    <button
+      onclick="closeModal('expenseModal')"
+    >
+         <i class="fa-regular fa-circle-xmark" style="font-size:24px"></i>
+    </button>
+
+  </div>
+
+</div>
+
+<div id="registerModal" class="modal hidden">
+
+  <div class="modal-content">
+
+    <h2>Create Account</h2>
+
+    <input
+      type="text"
+      id="registerName"
+      placeholder="First Name"
+    />
+
+    <input
+      type="email"
+      id="registerEmail"
+      placeholder="Email"
+    />
+
+  <div class="password-wrapper">
+  <input
+    type="password"
+    id="registerPassword"
+    placeholder="Password"
+  />
+  <i
+    id="toggleRegisterPassword"
+    class="fa-regular fa-eye password-toggle"
+  ></i>
+</div>
+
+    <button
+      id="submitRegisterBtn"
+      class="green"
+    >
+      <strong>Create Account</strong>
+    </button>
+
+    <button
+      onclick="closeModal('registerModal')"
+    >
+         <i class="fa-regular fa-circle-xmark" style="font-size:24px"></i>
+    </button>
+
+  </div>
+</div>
+
+<div id="savingOverlay" class="saving-overlay">
+  <div class="saving-box">
+    <div class="spinner"></div>
+    <div style = "color: black;" >Saving...</div>
+  </div>
+</div>
+
+<!-- Overlay -->
+<div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+<!-- Sidebar -->
+<div id="sidebar" class="sidebar">
+
+  <div class="sidebar-header">
+    
+     <div class="sidebar-user">
+
+    <div class="sidebar-avatar" id="sidebarAvatar">
+      <i class="fa-regular fa-user fa-xl"></i>
+    </div>
+
+      <div class="sidebar-user-info">
+      <div id="sidebarUserName"></div>
+      <div id="sidebarUserEmail"></div>
+
+    </div>
+  </div>
+   
+    <button id="closeSidebarBtn">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+  </div>
+
+  <div class="sidebar-menu">
+
+   <!-- <button id="dashBoard" class="sidebar-item">
+</button> -->
+
+    <button id="recurringExpensesBtn" class="sidebar-item">
+      <i class="fa-solid fa-repeat"></i>
+      Manage Recurring
+    </button>
+    
+    <button id="exportData" class="sidebar-item">
+       <i class="fa-regular fa-file-excel" style="font-size:24px"></i>
+      Export Data (CSV)
+    </button>
+    
+    <button id="settingsBtn" class="sidebar-item">
+    <i class="fa-solid fa-gear"></i>
+    Settings
+</button>
+  
+    <button id="sidebarLogoutBtn" class="sidebar-item danger">
+      <i style="color: #dc2626;" class="fas fa-sign-out-alt"></i>
+      Log Out
+    </button>
+
+  </div>
+  
+  <button id="installBtn" style="display:none">
+    📲 Install App
+</button>
+  <!--
+  <div class="sidebar-footer">
+  Version
+  <span id="appVersion"></span>
+</div>
+-->
+</div>
+
+
+<!-- RECURRING EXPENSES MODAL -->
+
+<div id="recurringPage" class="settings-page">
+
+   <div class="settings-toolbar">
+    <h3>
+        Manage Recurring Expenses
+    </h3>
+    <button
+        id="closeRecurringPage"
+        class="settings-close">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+</div>
+    <div class="settings-content">
+        <div id="recurringExpensesList"></div>
+    </div>
+</div>
+
+
+<!-- EDIT RECURRING EXPENSES MODAL -->
+
+<div id="editRecurringModal" class="modal">
+
+  <div class="modal-content">
+
+    <h3> Edit Recurring Expense</h3>
+
+    <input id="editRecurringDesc">
+
+    <input
+      id="editRecurringAmount"
+      type="number"
+    >
+
+    <select id="editRecurringDay"></select>
+    
+    <div class="modal-actions">
+
+    <button id="saveRecurringEditBtn">
+      <i class="fa-regular fa-floppy-disk" style="font-size:24px"></i>
+      Save
+    </button>
+ 
+</button>
+
+    <button
+      onclick="
+        document.getElementById('editRecurringModal').style.display='none'
+      "
+    >
+       <i class="fa-regular fa-circle-xmark" style="font-size:24px"></i>
+      Cancel
+    </button>
+
+  </div>
+</div>
+</div>
+
+<!-- Settings Page -->
+
+<div id="settingsPage" class="settings-page">
+  
+<div class="settings-toolbar">
+    <h3> Settings</h3>
+    <button id="backSettings" class="settings-close">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+</div>
+    <div class="settings-body">
+
+        <!-- Everything goes here -->
+        
+
+    <!-- Appearance -->
+    <div class="settings-section">
+      <h4 class="setting-title"> Appearance</h4>
+     <div class="setting-item">
+    <div class="setting-info">
+        <!-- <h5> Dark Mode</h5> -->
+        <p>Use dark mode</p>
+    </div>
+
+    <label class="switch">
+        <input
+            type="checkbox"
+            id="settingDarkMode">
+        <span class="slider"></span>
+    </label>
+</div>
+</div>
+
+    <!-- Security -->
+    <div class="settings-section">
+      <h4 class="setting-title" >Login & Security</h4>
+    <div class="setting-item">
+    <div class="setting-info">
+        <!-- <h5> Biometric Lock</h5> -->
+        <p>Require Face ID / Fingerprint</p>
+    </div>
+    <label class="switch">
+        <input
+            type="checkbox"
+            id="settingBiometric">
+        <span class="slider"></span>
+    </label>
+</div>
+    </div> <!-- end of security -->
+
+    <!-- Notifications -->
+    <div class="settings-section">
+      <h4 class="setting-title"> Notifications</h4>
+    <div class="setting-item">
+    <div class="setting-info">
+       <!-- <h5> Expense Reminder</h5> -->
+        <p>Notify upcoming due dates</p>
+    </div>
+
+    <label class="switch">
+        <input
+            type="checkbox"
+            id="notificationToggle">
+        <span class="slider"></span>
+    </label>
+
+</div>
+    </div>
+    
+    <!-- About -->
+
+    <div class="settings-section">
+      
+      <h4 class="setting-title" >About</h4>
+        <div class="setting-item">
+        <div class="setting-info">
+      <p>Version <span id="appVersion"></span></p>
+    </div>
+     </div>
+     </div>
+  </div>
+</div>
+
+<!-- NOTIFICATIONS -->
+
+<div id="notificationsPage" class="notifications-page">
+  <div class="notifications-header">
+    <h3>Notifications</h3>
+    <button id="closeNotificationsPage" class="close-page-btn">
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+  </div>
+  <div class="notifications-content">
+    <div class="notifications-section">
+      <h4>Upcoming Recurring Dues</h4>
+      <div id="notificationList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- App Lock -->
+
+<div id="appLockScreen" class="app-lock hidden">
+  <div class="lock-content">
+    <img
+      src="icons/icon-512.png"
+      class="lock-logo"
+      alt="Bantay Budget"
+    >
+    <h2>Bantay Budget Locked</h2>
+    <p>Unlock to continue</p>
+    <button id="unlockBtn">
+      🔓 Unlock
+    </button>
+  </div>
+</div>
+
+<script
+ type="module"
+ src="app.js?v=1.0.0"
+></script> 
+
+</body>
+</html>
