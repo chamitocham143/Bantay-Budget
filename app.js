@@ -75,7 +75,7 @@ async function enablePushNotifications() {
   
   try {
     const user = auth.currentUser;
-    
+
     if (!user) {
       alert("Please login first.");
       return;
@@ -130,15 +130,19 @@ notificationToggle.checked = true;
   }
 }
 
+if ("Notification" in window) {
+  Notification.requestPermission();
+}
+
 ///////////////////////////////////////////////
 
-const enablePushBtn =
+/*const enablePushBtn =
   document.getElementById("enablePushBtn");
 
 enablePushBtn?.addEventListener(
   "click",
   enablePushNotifications
-);
+); */
 
 /////#####################////////////
 
