@@ -7,6 +7,11 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging.js";
 
 import {
+  getFunctions,
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-functions.js";
+
+import {
  initializeFirestore,
  collection,
  addDoc,
@@ -81,26 +86,33 @@ async function enablePushNotifications() {
       return;
     }
 
-     //const permission =
-      //await Notification.requestPermission();
-
-      if (!("Notification" in window)) {
-  alert("Push notifications are not supported on this browser yet.");
-  return;
-}
-
-const permission =
-  await Notification.requestPermission();
+     const permission =
+      await Notification.requestPermission();
 
     if (permission !== "granted") {
       alert("Notification permission was not allowed.");
       return;
     }
 
+    if (!("Notification" in window)) {
+  alert("Push notifications are not supported on this browser yet.");
+  return;
+}
+
+if (!("serviceWorker" in navigator)) {
+  alert("Service workers are not supported on this browser.");
+  return;
+}
+
     const registration =
       await navigator.serviceWorker.register(
         "/firebase-messaging-sw.js"
       );
+
+console.log("Notification supported:", "Notification" in window);
+console.log("Service Worker supported:", "serviceWorker" in navigator);
+console.log("Notification permission:", Notification.permission);
+console.log("Current user:", auth.currentUser?.uid);
 
 const token = await getToken(
   messaging,
@@ -112,19 +124,29 @@ const token = await getToken(
 
 console.log("FCM Token:", token);
 
+const deviceIdKey = "bantayBudgetDeviceId";
+
+let deviceId = localStorage.getItem(deviceIdKey);
+
+if (!deviceId) {
+  deviceId = crypto.randomUUID();
+  localStorage.setItem(deviceIdKey, deviceId);
+}
+
 await setDoc(
   doc(
     db,
     "users",
     auth.currentUser.uid,
-    "settings",
-    "pushNotifications"
+    "devices",
+    deviceId
   ),
   {
     token: token,
     updated: Date.now(),
     device: navigator.userAgent
-  }
+  },
+  { merge: true }
 );
 
 console.log("Token saved to Firestore");
@@ -132,36 +154,42 @@ console.log("Token saved to Firestore");
 localStorage.setItem("pushNotificationsEnabled", "true");
 notificationToggle.checked = true;
 
-  } catch (error) {
-    console.error("Push notification error:", error);
-    alert("Failed to enable push notifications.");
+ } catch (error) {
+  console.error("Push notification error:", error);
+
+  localStorage.setItem("pushNotificationsEnabled", "false");
+
+  if (notificationToggle) {
+    notificationToggle.checked = false;
   }
+
+  alert(
+    "Failed to enable push notifications:\n\n" +
+    (error.code || "") +
+    "\n" +
+    (error.message || error)
+  );
 }
 
+}
+/*
 if ("Notification" in window) {
   Notification.requestPermission();
 }
-
+*/
 ///////////////////////////////////////////////
-
-/*const enablePushBtn =
-  document.getElementById("enablePushBtn");
-
-enablePushBtn?.addEventListener(
-  "click",
-  enablePushNotifications
-); */
 
 /////#####################////////////
 
 const app = initializeApp(firebaseConfig);
+const functions = getFunctions(app);
+const messaging = getMessaging(app);
 const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 });
 const auth = getAuth(app);
 
-const messaging = getMessaging(app);
-
+/*
 onMessage(messaging, (payload) => {
   console.log("Foreground message received:", payload);
 
@@ -180,6 +208,7 @@ await setPersistence(
   auth,
   browserLocalPersistence
 );
+*/
 
 //*******************************//
 
@@ -418,6 +447,7 @@ function checkAppReady(){
 }
 
 
+
 ////////////////////////////////////////////////////////////
 let inflowsRef;
 let expensesRef;
@@ -609,11 +639,6 @@ document.getElementById('loginBtn').onclick =
         password
       );
       
-      if (
-  Notification.permission === "default"
-) {
-  enablePushNotifications();
-}
       
       
      await userCredential.user.reload();
@@ -1683,6 +1708,30 @@ function listenToNotifications(){
     });
 
 }
+
+//SEND TEST PUSH //
+
+window.sendTestPush = async function () {
+
+  try {
+
+    const sendPush =
+      httpsCallable(functions, "sendTestPush");
+
+    const result = await sendPush();
+
+    console.log(result.data);
+
+    alert("✅ Test push notification sent!");
+
+  } catch (error) {
+
+    console.error(error);
+    alert(error.message);
+
+  }
+
+};
 
 
 
@@ -2886,6 +2935,7 @@ document
 
   });
 
+
 // OPEN / CLOSE NOTIFICATION PAGE //
 
 document
@@ -2950,6 +3000,64 @@ function hideLockScreen() {
     parseInt(scrollY || "0") * -1
   );
 }
+
+
+//Hide developer tools button//
+
+window.addEventListener("load", () => {
+
+  let developerPressTimer = null;
+
+  const versionLabel =
+    document.getElementById("appVersion");
+
+  const testPushBtn =
+    document.getElementById("testPushBtn");
+
+  if (!versionLabel || !testPushBtn) return;
+
+  function toggleDeveloperMode() {
+
+    testPushBtn.classList.toggle("hidden-dev");
+
+    const enabled =
+      !testPushBtn.classList.contains("hidden-dev");
+
+    alert(
+      enabled
+        ? "🛠 Developer Mode Enabled"
+        : "🛠 Developer Mode Disabled"
+    );
+
+  }
+
+  versionLabel.addEventListener("touchstart", () => {
+    developerPressTimer =
+      setTimeout(toggleDeveloperMode, 2000);
+  });
+
+  versionLabel.addEventListener("touchend", () => {
+    clearTimeout(developerPressTimer);
+  });
+
+  versionLabel.addEventListener("touchcancel", () => {
+    clearTimeout(developerPressTimer);
+  });
+
+  versionLabel.addEventListener("mousedown", () => {
+    developerPressTimer =
+      setTimeout(toggleDeveloperMode, 2000);
+  });
+
+  versionLabel.addEventListener("mouseup", () => {
+    clearTimeout(developerPressTimer);
+  });
+
+  versionLabel.addEventListener("mouseleave", () => {
+    clearTimeout(developerPressTimer);
+  });
+
+});
 
 // Version Number //
 document.getElementById(

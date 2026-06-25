@@ -2102,7 +2102,7 @@ body.light .header-month-filter input[type="month"]::-webkit-calendar-picker-ind
   }
   
   .header-month-filter {
-    min-width: 130px
+    min-width: 130px;
     height: 38px;
     padding-bottom: 5px;
     border-radius: 15px;
@@ -2588,5 +2588,6 @@ body.dark .notification-item {
   transform: rotate(180deg);
 }
 
-
-
+.hidden-dev {
+  display: none !important;
+}

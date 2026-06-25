@@ -1,9 +1,85 @@
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 const db = admin.firestore();
+
+async function sendPushToUserDevices(uid, title, body) {
+  const devicesSnapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("devices")
+    .get();
+
+  if (devicesSnapshot.empty) {
+    logger.info(`No FCM devices found for ${uid}`);
+    return 0;
+  }
+
+  const messages = [];
+
+  devicesSnapshot.forEach(deviceDoc => {
+    const device = deviceDoc.data();
+
+    if (device.token) {
+      messages.push({
+        token: device.token,
+        notification: {
+          title,
+          body
+        },
+        webpush: {
+          notification: {
+            icon: "/icons/icon-192.png",
+            badge: "/icons/icon-192.png"
+          }
+        }
+      });
+    }
+  });
+
+  if (messages.length === 0) {
+    logger.info(`No valid FCM tokens found for ${uid}`);
+    return 0;
+  }
+
+  const response = await admin.messaging().sendEach(messages);
+
+  logger.info(
+    `Push sent to ${response.successCount}/${messages.length} device(s) for ${uid}`
+  );
+
+  return response.successCount;
+}
+
+async function cleanupOldNotifications(uid) {
+  const thirtyDaysAgo =
+    Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+  const oldNotifications = await db
+    .collection("users")
+    .doc(uid)
+    .collection("notifications")
+    .where("read", "==", true)
+    .where("created", "<", thirtyDaysAgo)
+    .get();
+
+  if (oldNotifications.empty) return;
+
+  const batch = db.batch();
+
+  oldNotifications.docs.forEach(docSnap => {
+    batch.delete(docSnap.ref);
+  });
+
+  await batch.commit();
+
+  logger.info(
+    `Deleted ${oldNotifications.size} old notification(s) for ${uid}`
+  );
+}
 
 exports.dailyReminder = onSchedule(
   {
@@ -20,6 +96,7 @@ exports.dailyReminder = onSchedule(
 
     for (const userDoc of usersSnapshot.docs) {
       const uid = userDoc.id;
+      await cleanupOldNotifications(uid);
 
       const recurringSnapshot = await db
         .collection("users")
@@ -52,7 +129,34 @@ exports.dailyReminder = onSchedule(
 
         if (diffDays < 0 || diffDays > 3) continue;
 
-        const notificationId = `${recurringDoc.id}_${year}_${month + 1}_${dueDay}`;
+const dueDateString =
+  dueDate.toISOString().slice(0, 10);
+
+const expenseQuery = await db
+  .collection("users")
+  .doc(uid)
+  .collection("expenses")
+  .where("recurringTemplateId", "==", recurringDoc.id)
+  .where("date", "==", dueDateString)
+  .limit(1)
+  .get();
+
+if (!expenseQuery.empty) {
+  const expense = expenseQuery.docs[0].data();
+
+  if (
+    expense.status === "PAID" ||
+    expense.status === "ON HOLD"
+  ) {
+    logger.info(
+      `Skipping notification for ${uid}: ${recurring.desc} is ${expense.status}`
+    );
+    continue;
+  }
+}
+
+        const notificationId =
+          `${recurringDoc.id}_${year}_${month + 1}_${dueDay}`;
 
         let message = "";
 
@@ -64,12 +168,23 @@ exports.dailyReminder = onSchedule(
           message = `${recurring.desc} is due in ${diffDays} days`;
         }
 
-        await db
-          .collection("users")
-          .doc(uid)
-          .collection("notifications")
-          .doc(notificationId)
-          .set(
+       const notificationRef = db
+  .collection("users")
+  .doc(uid)
+  .collection("notifications")
+  .doc(notificationId);
+
+const existingNotification =
+  await notificationRef.get();
+
+if (existingNotification.exists) {
+  logger.info(
+    `Notification already exists for ${uid}: ${notificationId}`
+  );
+  continue;
+}
+
+await notificationRef.set(  
             {
               type: "RECURRING_DUE",
               title: "Upcoming recurring due",
@@ -84,6 +199,11 @@ exports.dailyReminder = onSchedule(
             { merge: true }
           );
 
+       await sendPushToUserDevices(
+  uid,
+  recurring.desc,
+  `${message} • $${Number(recurring.amount).toFixed(2)}`
+);
         logger.info(`Notification created for ${uid}: ${message}`);
       }
     }
@@ -91,3 +211,27 @@ exports.dailyReminder = onSchedule(
     return null;
   }
 );
+
+exports.sendTestPush = onCall(async (request) => {
+  const uid = request.auth?.uid;
+
+  if (!uid) {
+    throw new HttpsError("unauthenticated", "Please log in first.");
+  }
+
+  const sentCount = await sendPushToUserDevices(
+    uid,
+    "Due Reminder",
+    "Netflix is due tomorrow • $15.99"
+  );
+
+  if (sentCount === 0) {
+    throw new HttpsError("not-found", "No valid FCM devices found.");
+  }
+
+  return {
+    success: true,
+    sentCount,
+    message: `Test push sent to ${sentCount} device(s)!`
+  };
+});

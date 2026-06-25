@@ -618,6 +618,16 @@
 </div>
     </div>
     
+
+  <button
+    id="testPushBtn"
+    class="hidden-dev"
+    onclick="sendTestPush()"
+  >
+    🧪 Send Test Push
+  </button>
+
+
     <!-- About -->
 
     <div class="settings-section">
@@ -625,7 +635,7 @@
       <h4 class="setting-title" >About</h4>
         <div class="setting-item">
         <div class="setting-info">
-      <p>Version <span id="appVersion"></span></p>
+      <p>Version <span id="appVersion" class="setting-value"></span></p>
     </div>
      </div>
      </div>
@@ -668,7 +678,7 @@
 
 <script
  type="module"
- src="app.js?v=1.0.0"
+ src="app.js?v=1.0.1"
 ></script> 
 
 </body>
