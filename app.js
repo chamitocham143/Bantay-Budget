@@ -75,17 +75,14 @@ async function enablePushNotifications() {
   
   try {
     const user = auth.currentUser;
-
+    
     if (!user) {
       alert("Please login first.");
       return;
     }
 
-    // const permission =
-     // await Notification.requestPermission();
-     if ("Notification" in window) {
-  Notification.requestPermission();
-} 
+     const permission =
+      await Notification.requestPermission();
 
     if (permission !== "granted") {
       alert("Notification permission was not allowed.");
