@@ -81,8 +81,16 @@ async function enablePushNotifications() {
       return;
     }
 
-     const permission =
-      await Notification.requestPermission();
+     //const permission =
+      //await Notification.requestPermission();
+
+      if (!("Notification" in window)) {
+  alert("Push notifications are not supported on this browser yet.");
+  return;
+}
+
+const permission =
+  await Notification.requestPermission();
 
     if (permission !== "granted") {
       alert("Notification permission was not allowed.");
