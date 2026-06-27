@@ -150,6 +150,10 @@ if (expenseQuery.empty) {
 
 const expense = expenseQuery.docs[0].data();
 
+logger.info(
+  `Expense found: ${recurring.desc}, status=${expense.status}, due=${dueDateString}, diffDays=${diffDays}`
+);
+
 if (expense.status !== "PENDING") {
   logger.info(
     `Skipping notification for ${uid}: ${recurring.desc} is ${expense.status}`
