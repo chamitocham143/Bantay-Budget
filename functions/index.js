@@ -141,20 +141,21 @@ const expenseQuery = await db
   .limit(1)
   .get();
 
-if (!expenseQuery.empty) {
-  const expense = expenseQuery.docs[0].data();
-
-  if (
-    expense.status === "PAID" ||
-    expense.status === "ON HOLD"
-  ) {
-    logger.info(
-      `Skipping notification for ${uid}: ${recurring.desc} is ${expense.status}`
-    );
-    continue;
-  }
+if (expenseQuery.empty) {
+  logger.info(
+    `Skipping notification for ${uid}: no expense found for ${recurring.desc} on ${dueDateString}`
+  );
+  continue;
 }
 
+const expense = expenseQuery.docs[0].data();
+
+if (expense.status !== "PENDING") {
+  logger.info(
+    `Skipping notification for ${uid}: ${recurring.desc} is ${expense.status}`
+  );
+  continue;
+}
         const notificationId =
           `${recurringDoc.id}_${year}_${month + 1}_${dueDay}`;
 
