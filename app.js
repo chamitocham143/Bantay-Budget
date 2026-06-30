@@ -23,6 +23,7 @@ import {
  setDoc,
  getDoc,
  getDocs,
+ writeBatch,
  query,
  where
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -71,6 +72,9 @@ const firebaseConfig = {
 let notificationsRef;
 let notifications = [];
 let unsubscribeNotifications = null;
+
+const APP_VERSION = "Version 1.0.0";
+const APP_BUILD = "Build 2026.06.30.01";
 
 // Push Notifications //
 
@@ -172,12 +176,133 @@ notificationToggle.checked = true;
 }
 
 }
-/*
-if ("Notification" in window) {
-  Notification.requestPermission();
+
+////////// EXPORT BACKUP ////////////
+
+
+async function exportBackup() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("Please login first.");
+    return;
+  }
+
+  const collectionsToBackup = [
+    "inflows",
+    "expenses",
+    "recurringExpenses"
+  ];
+
+  const backup = {
+    app: "Bantay Budget",
+    version: "1.0.0",
+    exportedAt: new Date().toISOString(),
+    uid: user.uid,
+    data: {}
+  };
+
+  try {
+    for (const collectionName of collectionsToBackup) {
+      const snapshot = await getDocs(
+        collection(db, "users", user.uid, collectionName)
+      );
+
+      backup.data[collectionName] = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(backup, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const fileName =
+      `bantay-budget-backup-${new Date().toISOString().slice(0, 10)}.json`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+
+    URL.revokeObjectURL(url);
+
+    alert("✅ Backup exported successfully.");
+  } catch (error) {
+    console.error("Backup export error:", error);
+    alert("Failed to export backup.");
+  }
 }
-*/
-///////////////////////////////////////////////
+
+////// RESTORE BACKUP DATA /////
+
+async function restoreBackup(file) {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("Please login first.");
+    return;
+  }
+
+  if (!file) return;
+
+  const confirmed = confirm(
+    "This will replace your current inflows, expenses, and recurring expenses with the backup file. Continue?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+
+    if (
+      !backup ||
+      backup.app !== "Bantay Budget" ||
+      !backup.data
+    ) {
+      alert("Invalid backup file.");
+      return;
+    }
+
+    const collectionsToRestore = [
+      "inflows",
+      "expenses",
+      "recurringExpenses"
+    ];
+
+    for (const collectionName of collectionsToRestore) {
+      const currentSnapshot = await getDocs(
+        collection(db, "users", user.uid, collectionName)
+      );
+
+      for (const docSnap of currentSnapshot.docs) {
+        await deleteDoc(
+          doc(db, "users", user.uid, collectionName, docSnap.id)
+        );
+      }
+
+      const items = backup.data[collectionName] || [];
+
+      for (const item of items) {
+        const { id, ...data } = item;
+
+        await setDoc(
+          doc(db, "users", user.uid, collectionName, id),
+          data
+        );
+      }
+    }
+
+    alert("✅ Backup restored successfully.");
+  } catch (error) {
+    console.error("Backup restore error:", error);
+    alert("Failed to restore backup.");
+  }
+}
+
 
 /////#####################////////////
 
@@ -189,28 +314,9 @@ const db = initializeFirestore(app, {
 });
 const auth = getAuth(app);
 
-/*
-onMessage(messaging, (payload) => {
-  console.log("Foreground message received:", payload);
 
-  if (Notification.permission === "granted") {
-    new Notification(
-      payload.notification?.title || "Bantay Budget",
-      {
-        body: payload.notification?.body || "You have a new notification.",
-        icon: "icons/icon-192.png"
-      }
-    );
-  }
-});
 
-await setPersistence(
-  auth,
-  browserLocalPersistence
-);
-*/
-
-//*******************************//
+//*************HELPER FUNCTIONS******************//
 
 function formatCurrency(amount){
 
@@ -222,6 +328,37 @@ function formatCurrency(amount){
    }
  ).format(amount);
 
+}
+
+/// Notification timestamp //
+
+function formatRelativeTime(timestamp){
+
+  const seconds =
+    Math.floor((Date.now() - timestamp) / 1000);
+
+  if(seconds < 60)
+    return "Just now";
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  if(minutes < 60)
+    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  if(hours < 24)
+    return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+
+  const days =
+    Math.floor(hours / 24);
+
+  if(days === 1)
+    return "Yesterday";
+
+  return `${days} days ago`;
 }
 
 ////////// Start rebuilding here //////
@@ -1289,26 +1426,6 @@ if(day > daysInMonth){
 const generatedDate =
  `${year}-${month}-${String(day).padStart(2,'0')}`;
 
-   /* const existingQuery =
-    query(
-      expensesRef,
-      where(
-        'desc',
-        '==',
-        recurring.desc
-      ),
-      where(
-        'date',
-        '==',
-        generatedDate
-      )
-    );
-
-   const existing =
-    await getDocs(existingQuery);
-
-   if(!existing.empty)
-    continue; */
   
   const existingQuery = query(
   expensesRef,
@@ -1649,7 +1766,7 @@ function updateRecurringNotifications(){
       <div class="notification-item ${item.read ? "read" : "unread"}">
 
         <div class="notification-icon">
-          <i class="fa-solid fa-repeat"></i>
+          <i class="fa-solid fa-arrows-rotate"></i>
         </div>
 
         <div class="notification-body">
@@ -1659,6 +1776,10 @@ function updateRecurringNotifications(){
 
           <div class="notification-text">
             ${item.message || ""} • ${formatCurrency(item.amount || 0)}
+          </div>
+
+          <div class="notification-time">
+          ${formatRelativeTime(item.created)}
           </div>
 
           ${!item.read ? `
@@ -1676,6 +1797,90 @@ function updateRecurringNotifications(){
 
   });
 
+
+
+async function markAllNotificationsRead(){
+
+  if(!notificationsRef) return;
+
+  const unread =
+    notifications.filter(n => !n.read);
+
+  if(unread.length === 0) return;
+
+  const batch = writeBatch(db);
+
+  unread.forEach(item => {
+    batch.update(
+      doc(notificationsRef, item.id),
+      { read:true }
+    );
+  });
+
+  await batch.commit();
+}
+
+async function clearOldNotifications(){
+
+  if(!notificationsRef) return;
+
+  const confirmClear = confirm(
+  "Delete read notifications older than 7 days?");
+  
+  if(!confirmClear) return;
+
+  const DAYS_TO_KEEP = 7;
+
+const retentionPeriod =
+  DAYS_TO_KEEP * 24 * 60 * 60 * 1000;
+
+  const now = Date.now();
+
+  const oldRead =
+    notifications.filter(item =>
+      item.read &&
+      item.created &&
+      now - item.created > retentionPeriod
+    );
+
+  if(oldRead.length === 0){
+    alert("No old read notifications to clear.");
+    return;
+  }
+
+  const batch = writeBatch(db);
+
+  oldRead.forEach(item => {
+    batch.delete(
+      doc(notificationsRef, item.id)
+    );
+  });
+
+  await batch.commit();
+}
+
+const markAllReadBtn =
+  document.getElementById("markAllReadBtn");
+
+const clearOldNotificationsBtn =
+  document.getElementById("clearOldNotificationsBtn");
+
+if(markAllReadBtn){
+  markAllReadBtn.onclick = markAllNotificationsRead;
+  markAllReadBtn.disabled =
+    !notifications.some(n => !n.read);
+}
+
+if(clearOldNotificationsBtn){
+  clearOldNotificationsBtn.onclick = clearOldNotifications;
+  clearOldNotificationsBtn.disabled =
+    !notifications.some(n =>
+      n.read &&
+      n.created &&
+      Date.now() - n.created >
+        7 * 24 * 60 * 60 * 1000
+    );
+}
 }
 
 // LISTEN TO NOTIFS //
@@ -2062,24 +2267,15 @@ document.getElementById("allocableBalance").textContent =
 
 document.getElementById("availableBalance").textContent =
     formatCurrency(available);
-    
-    updateDynamicTip(
-  inflowTotal,
-  paidTotal,
-  pendingTotal,
-  onHoldTotal,
-  allocable,
-  available,
-);
 
-updateDynamicOverviewMessage(
+updateBudgetInsight({
   inflowTotal,
   paidTotal,
   pendingTotal,
   onHoldTotal,
   allocable,
-  available,
-);
+  available
+});
 
 if(displayExpenses.length === 0){
   expensesList.innerHTML = `
@@ -2104,7 +2300,9 @@ if(filteredInflows.length===0){
 
 updateRecurringNotifications();
 
-// --------------- //
+// --------Fianacial Tips------- //
+
+updateFinanceTip();
 }
 
 window.deleteInflow = async(id)=>{
@@ -2293,34 +2491,49 @@ showRecurringBtn.addEventListener("click", () => {
   setActiveSegment("showRecurringBtn");
 });
 
-// DYNAMIC OVERVIEW //
-function updateDynamicOverviewMessage(
-inflowTotal,
-  paidTotal,
-  pendingTotal,
-  onHoldTotal,
-  allocable,
-  available,
-  ){
-    
-  const overviewText = document.getElementById("overview");
-  let overviewMessage = "";
-  
-  if (
-    inflowTotal === 0 &&
-  paidTotal === 0 &&
-  pendingTotal === 0 &&
-  onHoldTotal === 0 &&
-  allocable === 0 &&
-  available === 0
-    ){
-      overviewMessage = "Welcome to Bantay Budget! <br> Add your first income or expense to begin.";
-      
-      }else{
-        overviewMessage = "Here's your financial overview.";
-        }
-        overviewText.innerHTML = `${overviewMessage}`;
+  // EXPORT BACKUP CONECT TO UI////
+
+  const backupDataBtn =
+  document.getElementById("backupDataBtn");
+
+const restoreDataInput =
+  document.getElementById("restoreDataInput");
+
+backupDataBtn?.addEventListener("click", exportBackup);
+
+restoreDataInput?.addEventListener("change", e => {
+
+  const file = e.target.files[0];
+  if(!file) return;
+  const confirmRestore = confirm(
+    "Restore this backup?\n\nThis will merge or replace your current data."
+  );
+  if(!confirmRestore){
+    e.target.value = "";
+    return;
   }
+  restoreBackup(file);
+  e.target.value = "";
+});
+
+
+//About Page //
+
+const aboutAppBtn = document.getElementById("aboutAppBtn");
+const aboutPage = document.getElementById("aboutPage");
+const closeAboutPage = document.getElementById("closeAboutPage");
+
+if(aboutAppBtn && aboutPage){
+  aboutAppBtn.onclick = () => {
+    aboutPage.classList.add("show");
+  };
+}
+
+if(closeAboutPage && aboutPage){
+  closeAboutPage.onclick = () => {
+    aboutPage.classList.remove("show");
+  };
+}
 
 
   // CREATE MERK READ FOR THE NOTIFICATIONS //
@@ -2339,53 +2552,141 @@ async function(id){
     );
 
 }
-  
-// DYNAMIC TIPS FUNCTION //
 
-function updateDynamicTip(
+//Dynamic Budget Insight Helper Function//
+
+function updateBudgetInsight({
   inflowTotal,
   paidTotal,
   pendingTotal,
   onHoldTotal,
   allocable,
-  available,
+  available
+}){
 
-) {
-  const tipIcon = document.getElementById("tipIcon");
-  const tipText = document.getElementById("summaryTipText");
-  //const shortage = pendingTotal - allocable;
+  const card = document.getElementById("budgetInsight");
+  const title = document.getElementById("insightTitle");
+  const text = document.getElementById("insightText");
+
+  if(!card || !title || !text) return;
+
+  card.className = "budget-insight-card";
+
+  if(inflowTotal === 0){
+    title.textContent = "No inflows yet";
+    text.textContent = "Add your income first so Bantay Budget can calculate your available balance.";
+    card.classList.add("neutral");
+    return;
+  }
+
+  if(pendingTotal > available){
+    title.textContent = "Budget Watch";
+    text.textContent =
+      `Your pending payments total ${formatCurrency(pendingTotal)}, which is higher than your available balance of ${formatCurrency(available)}.`;
+    card.classList.add("warning");
+    return;
+  }
+
+  if(pendingTotal > 0){
+    title.textContent = "Upcoming Payments";
+    text.textContent =
+      `You have ${formatCurrency(pendingTotal)} in pending payments. Your available balance is ${formatCurrency(available)}.`;
+    card.classList.add("info");
+    return;
+  }
+
+  if(onHoldTotal > 0){
+    title.textContent = "On Hold Items";
+    text.textContent =
+      `${formatCurrency(onHoldTotal)} is currently on hold and not deducted from your available balance.`;
+    card.classList.add("neutral");
+    return;
+  }
+
+  title.textContent = "Great job!";
+  text.textContent =
+    `All tracked payments are settled. Your available balance is ${formatCurrency(available)}.`;
+  card.classList.add("success");
+}
   
-  if (!tipText) return;
+// DYNAMIC TIPS FUNCTION //
 
-  let tip = "Keep tracking your expenses to maintain a healthy balance.";
+const financeTips = [
 
-  if (inflowTotal <= 0) {
-  tipIcon.textContent = "💰";
-  tip = "Add your first income to start tracking your finances.";
+  { icon:"💰", text:"Pay yourself first. Save before spending." },
+
+  { icon:"📈", text:"Track every expense, even the smallest ones." },
+
+  { icon:"💳", text:"Avoid carrying credit card balances whenever possible." },
+
+  { icon:"🏦", text:"Build an emergency fund covering 3–6 months of expenses." },
+
+  { icon:"📅", text:"Pay bills before their due date to avoid penalties." },
+
+  { icon:"🛒", text:"Create a shopping list to reduce impulse purchases." },
+
+  { icon:"🚗", text:"Review recurring subscriptions every few months." },
+
+  { icon:"📊", text:"Review your budget at least once every month." },
+
+  { icon:"🌱", text:"Small savings made consistently grow over time." },
+
+  { icon:"🎯", text:"Set realistic financial goals and celebrate your progress." },
+
+  { icon:"💵", text:"Spend less than you earn every month." },
+
+  { icon:"📚", text:"Invest in learning—financial knowledge pays lifelong dividends." }
+
+];
+
+function updateFinanceTip(){
+
+    const tipIcon =
+        document.getElementById("tipIcon");
+
+    const tipText =
+        document.getElementById("tipText");
+
+    if(!tipIcon || !tipText) return;
+
+    const today =
+        new Date().toDateString();
+
+    const savedDate =
+        localStorage.getItem("financeTipDate");
+
+    let index =
+        Number(localStorage.getItem("financeTipIndex"));
+
+    if(savedDate !== today || isNaN(index)){
+
+        index =
+            Math.floor(
+                Math.random() *
+                financeTips.length
+            );
+
+        localStorage.setItem(
+            "financeTipDate",
+            today
+        );
+
+        localStorage.setItem(
+            "financeTipIndex",
+            index
+        );
+
+    }
+
+    tipIcon.textContent =
+        financeTips[index].icon;
+
+    tipText.textContent =
+        financeTips[index].text;
+
 }
-/* else if (available <= 0) {
-  tipIcon.textContent = "🚨";
-  tip = "Your balance is running low.";
-}*/
-else if (pendingTotal > allocable) {
-  tipIcon.textContent = "⚠️";
-  tip = "Pending expenses exceed your Allocable Balance.";
-}
-else if (pendingTotal > 0) {
-  tipIcon.textContent = "⏳";
-  tip = "You still have pending expenses.";
-}
-else if (onHoldTotal > 0) {
-  tipIcon.textContent = "⏸️";
-  tip = "You have expenses on hold.";
-}
-else {
-  tipIcon.textContent = "🌱";
-  tip = "Excellent! Your finances look healthy this month.";
-}
-  
-  tipText.innerHTML = `<strong>Tip:</strong> ${tip}`;
-}
+
+
 
 // Exporting CSV File //
 
@@ -2491,11 +2792,18 @@ if (appContainer) {
 }
 
 
-	//footer
+	//footer main page //
 			document.getElementById("year").textContent =
   new Date().getFullYear();
 
+  //Footer About Page //
 
+  const copyrightYear = document.getElementById("copyrightYear");
+
+if(copyrightYear){
+  copyrightYear.textContent = new Date().getFullYear();
+}
+ 
 // MODAL
 
 const inflowModal =
@@ -3059,9 +3367,9 @@ window.addEventListener("load", () => {
 
 });
 
-// Version Number //
-document.getElementById(
-  "appVersion"
-).textContent = "1.0.0"
+// Version/Build Number //
+
+document.getElementById("appVersion").textContent = APP_VERSION;
+document.getElementById("appBuild").textContent = APP_BUILD;
 
 // ENDDD//

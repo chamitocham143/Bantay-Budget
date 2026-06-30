@@ -84,6 +84,7 @@ async function cleanupOldNotifications(uid) {
 exports.dailyReminder = onSchedule(
   {
     schedule: "every day 08:00",
+    //schedule: "every 5 minutes",
     timeZone: "America/Los_Angeles",
   },
   async () => {
@@ -96,7 +97,7 @@ exports.dailyReminder = onSchedule(
 
     for (const userDoc of usersSnapshot.docs) {
       const uid = userDoc.id;
-      await cleanupOldNotifications(uid);
+       await cleanupOldNotifications(uid);
 
       const recurringSnapshot = await db
         .collection("users")
@@ -137,22 +138,34 @@ const expenseQuery = await db
   .doc(uid)
   .collection("expenses")
   .where("recurringTemplateId", "==", recurringDoc.id)
-  .where("date", "==", dueDateString)
-  .limit(1)
   .get();
 
-if (expenseQuery.empty) {
-  logger.info(
-    `Skipping notification for ${uid}: no expense found for ${recurring.desc} on ${dueDateString}`
+const currentMonth =
+  `${year}-${String(month + 1).padStart(2, "0")}`;
+
+const expenseDoc = expenseQuery.docs.find(doc => {
+  const expense = doc.data();
+
+  return (
+    expense.date &&
+    expense.date.startsWith(currentMonth)
   );
+});
+
+if (!expenseDoc) {
+  logger.info(
+    `Skipping notification for ${uid}: no expense found for ${recurring.desc} with template ${recurringDoc.id} on ${dueDateString}`
+  );
+
+  expenseQuery.docs.forEach(doc => {
+    const expense = doc.data();
+
+  });
+
   continue;
 }
 
-const expense = expenseQuery.docs[0].data();
-
-logger.info(
-  `Expense found: ${recurring.desc}, status=${expense.status}, due=${dueDateString}, diffDays=${diffDays}`
-);
+const expense = expenseDoc.data();
 
 if (expense.status !== "PENDING") {
   logger.info(
@@ -160,18 +173,21 @@ if (expense.status !== "PENDING") {
   );
   continue;
 }
+
         const notificationId =
           `${recurringDoc.id}_${year}_${month + 1}_${dueDay}`;
 
-        let message = "";
+        let dueText = "";
 
         if (diffDays === 0) {
-          message = `${recurring.desc} is due today`;
+          dueText = "Payment due today";
         } else if (diffDays === 1) {
-          message = `${recurring.desc} is due tomorrow`;
+          dueText = "Payment due tomorrow";
         } else {
-          message = `${recurring.desc} is due in ${diffDays} days`;
+          dueText = `Payment due in ${diffDays} days`;
         }
+
+        message = `${dueText}`;
 
        const notificationRef = db
   .collection("users")
@@ -206,8 +222,8 @@ await notificationRef.set(
 
        await sendPushToUserDevices(
   uid,
-  recurring.desc,
-  `${message} • $${Number(recurring.amount).toFixed(2)}`
+  `Reminder 🔔`,
+  `${recurring.desc} • ${message} • $${Number(recurring.amount).toFixed(2)}`
 );
         logger.info(`Notification created for ${uid}: ${message}`);
       }
