@@ -518,7 +518,7 @@
 
   <div class="modal-content">
 
-    <h3> Edit Recurring Expense</h3>
+    <h3> Manage Recurring Expense</h3>
 
     <input id="editRecurringDesc">
 
@@ -527,7 +527,7 @@
       type="number"
     >
 
-    <select id="editRecurringDay"></select>
+    <select id="editRecurringDay" disabled></select>
     
     <div class="modal-actions">
 
@@ -704,6 +704,97 @@
   </div>
 </div>
 
+<!--FAQ's Full Page-->
+
+<div id="faqPage" class="faq-page">
+
+<div class="faq-header">
+  <h3>FAQ’s</h3>
+
+  <button id="closeFaqPage" class="close-page-btn">
+    <i class="fa-solid fa-arrow-left"></i>
+  </button>
+</div>
+
+<div class="faq-content">
+
+  <div class="faq-section-title">
+    <span>📊</span>
+    Dashboard Summary Cards
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total Income?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Total Income shows all cash inflows recorded for the selected month.
+      </p>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total Paid?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Total Paid shows expenses marked as Paid. Only paid expenses reduce your available balance.
+      </p>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total Pending?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Total Pending shows expenses waiting to be paid. Pending expenses are not deducted until marked as Paid.
+      </p>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Allocable Balance?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Allocable Balance is the money currently available after paid expenses are deducted.
+      </p>
+
+      <code>Total Income − Total Paid</code>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Remaining Balance?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Remaining Balance estimates how much money will be left after pending expenses are paid.
+      </p>
+
+      <code>Allocable Balance − Total Pending</code>
+    </div>
+  </div>
+</div>
+
+</div>
+
 <!-- NOTIFICATIONS -->
 
 <div id="notificationsPage" class="notifications-page">
@@ -759,26 +850,41 @@
       </p>
     </div>
 
-    <div class="about-card developer-card">
-    <div>
-        <h3>Developer</h3>
-        <p>Created by Reycham Pana.</p>
-    </div>
-    <a
-        href="https://reychamdev.vercel.app"
-        target="_blank"
-        rel="noopener"
-        class="learn-more-btn"
-    >
-        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-        Visit Portfolio
-    </a>
+    <div class="about-card about-action-card" id="faqCardBtn">
+  <div class="about-action-icon">
+    <i class="fa-regular fa-circle-question"></i>
+  </div>
+
+  <div class="about-action-text">
+    <h4>FAQ’s</h4>
+    <p>Find answers to common questions</p>
+  </div>
+
+  <i class="fa-solid fa-chevron-right about-action-arrow"></i>
 </div>
 
+
+<div class="about-card about-action-card" id="developerCard">
+
+    <div class="about-action-icon">
+        <i class="fa-regular fa-user"></i>
+    </div>
+
+    <div class="about-action-text">
+        <h4>Developer</h4>
+        <p>Created by Reycham Pana.</p>
+    </div>
+
+    <i class="fa-solid fa-arrow-up-right-from-square about-action-arrow"></i>
+
+</div>
+<!--
     <div class="about-card">
       <h4>Website</h4>
       <p>bantaybudget.fyi</p>
     </div>
+
+  -->
 
       <div class="about-app-footer">
   <p class="about-app-copy">

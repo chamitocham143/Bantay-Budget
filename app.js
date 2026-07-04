@@ -177,6 +177,18 @@ notificationToggle.checked = true;
 
 }
 
+function getLocalMonthString(){
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function getLocalDateString(){
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
 ////////// EXPORT BACKUP ////////////
 
 
@@ -221,7 +233,7 @@ async function exportBackup() {
     const url = URL.createObjectURL(blob);
 
     const fileName =
-      `bantay-budget-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  `bantay-budget-backup-${getLocalDateString()}.json`;
 
     const link = document.createElement("a");
     link.href = url;
@@ -604,8 +616,7 @@ const filterMonth =
 
 const today = new Date();
 
-filterMonth.value =
-  today.toISOString().slice(0,7);
+filterMonth.value = getLocalMonthString();
   
 filterMonth.addEventListener("change", render);
 
@@ -1020,6 +1031,32 @@ notifications = [];
   return;
 }
     
+  // FAQ's//
+
+  document
+  .querySelectorAll(".faq-question")
+  .forEach(question => {
+
+    question.addEventListener("click", () => {
+
+      const currentItem = question.parentElement;
+
+      document
+        .querySelectorAll(".faq-item")
+        .forEach(item => {
+
+          if(item !== currentItem){
+            item.classList.remove("open");
+          }
+
+        });
+
+      currentItem.classList.toggle("open");
+
+    });
+
+  });
+
     // -------------------------
     // USER LOGGED IN
     // -------------------------
@@ -1422,26 +1459,23 @@ if(day > daysInMonth){
   day = daysInMonth;
 }
 
-
 const generatedDate =
  `${year}-${month}-${String(day).padStart(2,'0')}`;
 
   
-  const existingQuery = query(
-  expensesRef,
-  where("recurringTemplateId", "==", recurringDoc.id),
-  where("dueDate", "==", generatedDate)
-);
+  const expenseId =
+  `${recurringDoc.id}_${year}_${month}`;
 
-const existing =
-  await getDocs(existingQuery);
+const expenseDocRef =
+  doc(expensesRef, expenseId);
 
-if(!existing.empty){
+const existingExpense =
+  await getDoc(expenseDocRef);
 
+if(existingExpense.exists()){
   console.log(
     "Skipped duplicate:",
-    recurringDoc.id,
-    generatedDate
+    expenseId
   );
 
   continue;
@@ -1449,14 +1483,14 @@ if(!existing.empty){
 
 console.log(
   "Creating recurring expense:",
-  recurringDoc.id,
+  expenseId,
   generatedDate
 );
-  
-  const todayDate =
+
+const todayDate =
   `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  
-   await addDoc(expensesRef,{
+
+await setDoc(expenseDocRef,{
   type:"EXPENSE",
   date: todayDate,
   dueDate: generatedDate,
@@ -1476,6 +1510,7 @@ console.log(
 // EDIT RECURRING MODAL //
 
 let editingRecurringId = null;
+let editingExpenseId = null;
 
 window.toggleRecurring = async function(id, active){
 
@@ -1572,6 +1607,7 @@ window.editRecurring = async function(id){
 
 //SAVE RECURRING AFTER EDITING/UPDATING
 
+
 document.getElementById(
   'saveRecurringEditBtn'
 ).onclick = async ()=>{
@@ -1594,6 +1630,7 @@ document.getElementById(
         'editRecurringDay'
       ).value
     );
+    
 
   // UPDATE TEMPLATE
 
@@ -1608,62 +1645,53 @@ document.getElementById(
     {
       desc,
       amount,
-      recurringDay
     }
   );
 
-  // UPDATE GENERATED EXPENSE
-
-  const expenseQuery =
-    query(
-      expensesRef,
-      where(
-        'recurringTemplateId',
-        '==',
-        editingRecurringId
-      )
-    );
-
-  const snapshot =
-    await getDocs(
-      expenseQuery
-    );
-
-  const today =
-    new Date();
-
-  const newDate =
-    `${today.getFullYear()}-${String(
-      today.getMonth()+1
-    ).padStart(2,'0')}-${String(
-      recurringDay
-    ).padStart(2,'0')}`;
-
-  for(const expenseDoc of snapshot.docs){
-
-    await updateDoc(
-      doc(
-        db,
-        'users',
-        auth.currentUser.uid,
-        'expenses',
-        expenseDoc.id
-      ),
-      {
-        desc,
-        amount,
-        recurringDay,
-        date:newDate
-      }
-    );
-
-  }
 
   document
     .getElementById(
       'editRecurringModal'
     )
     .classList.remove('show');
+
+};
+
+
+window.editGeneratedRecurringExpense = async function(id){
+
+  const user = auth.currentUser;
+
+  if(!user) return;
+
+  const expense =
+    expenses.find(e => e.id === id);
+
+  if(!expense) return;
+
+  const desc =
+    prompt("Edit Description", expense.desc);
+
+  if(desc === null) return;
+
+  const date =
+    prompt("Edit Date (YYYY-MM-DD)", expense.date);
+
+  if(date === null) return;
+
+  const amount =
+    prompt("Edit Amount", expense.amount);
+
+  if(amount === null) return;
+
+  await updateDoc(
+    doc(db, "users", user.uid, "expenses", id),
+    {
+      desc,
+      date,
+      amount:Number(amount)
+    }
+  );
 
 };
 
@@ -1942,35 +1970,43 @@ window.sendTestPush = async function () {
 
 // RENDER FUCNTIONS// 
 function render(){
- const filter = document.getElementById('filterMonth').value;
+ 
+  const filter = document.getElementById('filterMonth').value;
 
-inflowsList.innerHTML='';
-expensesList.innerHTML='';
+inflowsList.innerHTML = '';
+expensesList.innerHTML = '';
 
+function getExpenseMonth(e){
+  if(e.recurring && e.dueDate){
+    return e.dueDate.slice(0, 7);
+  }
+
+  return e.date ? e.date.slice(0, 7) : "";
+}
 
 const filteredInflows =
- inflows.filter(i=>
-  !filter ||
-  (
-    (i.date && i.date.startsWith(filter)) ||
-    (i.month && i.month===filter)
-  )
-);
+  inflows.filter(i =>
+    !filter ||
+    (
+      (i.date && i.date.startsWith(filter)) ||
+      (i.month && i.month === filter)
+    )
+  );
 
-const filteredExpenses = expenses.filter(e =>
-  !filter || e.date.startsWith(filter)
-);
+const filteredExpenses =
+  expenses.filter(e =>
+    !filter || getExpenseMonth(e) === filter
+  );
 
 let displayExpenses = filteredExpenses;
 
 if(currentView === 'EXPENSES'){
-  
   displayExpenses =
-  filteredExpenses
-    .filter(e => !e.recurring)
-    .sort((a,b) =>
-      new Date(b.date) - new Date(a.date)
-    );
+    filteredExpenses
+      .filter(e => !e.recurring)
+      .sort((a,b) =>
+        new Date(b.date) - new Date(a.date)
+      );
 }
 
 if(currentView === 'RECURRING'){
@@ -1978,8 +2014,8 @@ if(currentView === 'RECURRING'){
     filteredExpenses
       .filter(e => e.recurring)
       .sort((a,b) =>
-        Number(b.recurringDay || 0) -
-        Number(a.recurringDay || 0)
+        new Date(b.dueDate || b.date) -
+        new Date(a.dueDate || a.date)
       );
 }
 
@@ -2211,19 +2247,12 @@ displayExpenses.forEach(item => {
           ${
             item.recurring
               ? `
-                <button onclick="alert('Edit this item from Recurring Expenses Management.')">
-                  <span class="action-icon">
-  <i class="fa-solid fa-lock"></i>
-</span>
+               <button onclick="editGeneratedRecurringExpense('${item.id}')">
+                  <i class="fa-solid fa-pen"></i>
                 </button>
               `
               : `
-                <button onclick="editExpense(
-                  '${item.id}',
-                  '${item.desc}',
-                  '${item.date}',
-                  '${item.amount}'
-                )">
+                <button onclick="editExpense('${item.id}')">
                 
                   <span class="action-icon">
     <i class="fas fa-edit"></i>
@@ -2374,61 +2403,47 @@ window.editInflow = async(
 
 };
 
-window.editExpense = async(
- id,
- currentDesc,
- currentDate,
- currentAmount
-)=>{
-  
-  const expenseDoc =
-  await getDoc(
-    doc(
-      db,
-      'users',
-      auth.currentUser.uid,
-      'expenses',
-      id
-    )
+window.editExpense = async function(id){
+
+  console.log("editExpense clicked:", id);
+
+  const user = auth.currentUser;
+  if(!user) return;
+
+  const expense = expenses.find(e => e.id === id);
+
+  console.log("found expense:", expense);
+
+  if(!expense) return;
+
+  if(expense.recurring){
+    editGeneratedRecurringExpense(id);
+    return;
+  }
+
+  const desc =
+    prompt("Edit Description", expense.desc);
+
+  if(desc === null) return;
+
+  const date =
+    prompt("Edit Date (YYYY-MM-DD)", expense.date);
+
+  if(date === null) return;
+
+  const amount =
+    prompt("Edit Amount", expense.amount);
+
+  if(amount === null) return;
+
+  await updateDoc(
+    doc(db, "users", user.uid, "expenses", id),
+    {
+      desc,
+      date,
+      amount:Number(amount)
+    }
   );
-
-if(expenseDoc.data()?.recurring){
-
-  alert(
-    'Recurring expenses must be edited from Recurring Expenses Management.'
-  );
-
-  return;
-}
-
- const user = auth.currentUser;
-
- if(!user) return;
-
- const desc =
- prompt('Edit Description', currentDesc);
-
- if(desc === null) return;
-
- const date =
- prompt('Edit Date (YYYY-MM-DD)', currentDate);
-
- if(date === null) return;
-
- const amount =
- prompt('Edit Amount', currentAmount);
-
- if(amount === null) return;
-
- await updateDoc(
-   doc(db,'users',user.uid,'expenses',id),
-   {
-     desc,
-     date,
-     amount:Number(amount)
-   }
- );
-
 };
 
 
@@ -2743,10 +2758,7 @@ if(
  a.href =
   URL.createObjectURL(blob);
  const exportMonth =
-  filter ||
-  new Date()
-   .toISOString()
-   .slice(0,7);
+  filter || getLocalMonthString();
  a.download =
   `Budget Summary for ${exportMonth}.csv`;
  a.click();
@@ -2909,6 +2921,45 @@ profileBtn?.addEventListener("click", openSidebar);
 closeSidebarBtn?.addEventListener("click", closeSidebar);
 
 sidebarOverlay?.addEventListener("click", closeSidebar);
+
+ //OPEN/CLOSE FAQ's PAGE//
+
+ const faqCardBtn =
+  document.getElementById("faqCardBtn");
+
+const faqPage =
+  document.getElementById("faqPage");
+
+const closeFaqPage =
+  document.getElementById("closeFaqPage");
+
+if(faqCardBtn && faqPage){
+  faqCardBtn.addEventListener("click", () => {
+    console.log("FAQ clicked");
+  console.log(faqPage);
+    faqPage.classList.add("show");
+  });
+}
+
+if(closeFaqPage && faqPage){
+  closeFaqPage.addEventListener("click", () => {
+    faqPage.classList.remove("show");
+  });
+}
+
+//Developer External Link Open//
+
+const developerCard =
+    document.getElementById("developerCard");
+
+developerCard.onclick = () => {
+
+    window.open(
+        "https://reychamdev.vercel.app",
+        "_blank"
+    );
+
+};
 
 
 /* THEME */
