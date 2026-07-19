@@ -40,22 +40,7 @@ import {
  onAuthStateChanged,
  signOut
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-/*
 
-// REPLACE WITH YOUR FIREBASE CONFIG
-
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDmB5Y3F8K5cDFzBt1nG8OXqlKF1Qa8fsY",
-  authDomain: "bantaybudget101.firebaseapp.com",
-  projectId: "bantaybudget101",
-  storageBucket: "bantaybudget101.firebasestorage.app",
-  messagingSenderId: "151522764289",
-  appId: "1:151522764289:web:4834211cda5c01e5794200",
-  measurementId: "G-WXNRL2RNYE"
-};
-
-*/
 
 // THIS FIREBASE IS FOR THE PRODUCTION //
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -373,8 +358,6 @@ function formatRelativeTime(timestamp){
   return `${days} days ago`;
 }
 
-////////// Start rebuilding here //////
-
 /* =====================================
    STARTUP MANAGER
 ===================================== */
@@ -453,6 +436,7 @@ if(user){
 
 }
 
+
 let appLockScrollY = 0;
 
 function showAppLock(){
@@ -474,6 +458,7 @@ function showAppLock(){
 
   lock.classList.remove("hidden");
 }
+
 
 function hideAppLock(){
   const lock =
@@ -507,6 +492,7 @@ function lockAppWhenAway(){
   }
   showAppLock();
 }
+
 
 let appLockTimer = null;
 const APP_LOCK_DELAY = 3 * 60 * 1000; // 3 minutes
@@ -596,8 +582,8 @@ function checkAppReady(){
 }
 
 
-
 ////////////////////////////////////////////////////////////
+
 let inflowsRef;
 let expensesRef;
 let recurringRef;
@@ -1320,7 +1306,8 @@ function hideSaving(){
 
   try {
 
-    // your existing save logic here
+    // existing save logic here //
+
 const isRecurring =
     document.getElementById('isRecurring').checked;
 
@@ -1825,8 +1812,6 @@ function updateRecurringNotifications(){
 
   });
 
-
-
 async function markAllNotificationsRead(){
 
   if(!notificationsRef) return;
@@ -1966,9 +1951,8 @@ window.sendTestPush = async function () {
 
 };
 
+// RENDER FUNCTIONS// 
 
-
-// RENDER FUCNTIONS// 
 function render(){
  
   const filter = document.getElementById('filterMonth').value;
@@ -2207,7 +2191,7 @@ displayExpenses.forEach(item => {
 
         <div class="money-info">
           <h3>${item.desc}</h3>
-          <p>
+         <p>
           📅 ${new Date(item.date).toLocaleDateString(
           "en-US",
         {
@@ -2216,7 +2200,7 @@ displayExpenses.forEach(item => {
           year: "numeric"
           }
             )}
-          </p>
+          </p> 
         </div>
 
         <div class="money-amount">
@@ -2236,9 +2220,9 @@ displayExpenses.forEach(item => {
       <div class="money-card-bottom">
         ${
           item.recurring
-            ? `<span class="recurring-badge">
-                 <span class="recurring-icon">🔁</span>
-                  ${recurringBadgeDate}
+            ? `<span class="recurring-badge"> Due on: 
+                  ${recurringBadgeDate} 
+                  <span class="recurring-icon">🔁</span>
                </span>`
             : `<span></span>`
         }
@@ -2248,7 +2232,7 @@ displayExpenses.forEach(item => {
             item.recurring
               ? `
                <button onclick="editGeneratedRecurringExpense('${item.id}')">
-                  <i class="fa-solid fa-pen"></i>
+                  <i class="fas fa-edit"></i>
                 </button>
               `
               : `
@@ -2594,18 +2578,18 @@ function updateBudgetInsight({
     return;
   }
 
-  if(pendingTotal > available){
+  if(pendingTotal > allocable){
     title.textContent = "Budget Watch";
     text.textContent =
-      `Your pending payments total ${formatCurrency(pendingTotal)}, which is higher than your available balance of ${formatCurrency(available)}.`;
+      `Your pending payments total ${formatCurrency(pendingTotal)}, is higher than your allocable balance of ${formatCurrency(allocable)}.`;
     card.classList.add("warning");
     return;
   }
 
-  if(pendingTotal > 0){
+  if(pendingTotal > 0 && pendingTotal <= allocable){
     title.textContent = "Upcoming Payments";
     text.textContent =
-      `You have ${formatCurrency(pendingTotal)} in pending payments. Your available balance is ${formatCurrency(available)}.`;
+  `Good news! Your allocable balance of ${formatCurrency(allocable)} is enough to cover your pending payments totaling ${formatCurrency(pendingTotal)}.`;
     card.classList.add("info");
     return;
   }
@@ -2613,7 +2597,7 @@ function updateBudgetInsight({
   if(onHoldTotal > 0){
     title.textContent = "On Hold Items";
     text.textContent =
-      `${formatCurrency(onHoldTotal)} is currently on hold and not deducted from your available balance.`;
+      `${formatCurrency(onHoldTotal)} is currently on hold and not deducted from your allocable balance.`;
     card.classList.add("neutral");
     return;
   }

@@ -1695,7 +1695,7 @@ body.dark .settings-header{
   background:#fff;
   box-shadow:-5px 0 20px rgba(0,0,0,.2);
   padding:14px;
-  margin:12px 0;
+  margin:0;
   border-radius:12px;
 }
 
@@ -1945,7 +1945,7 @@ i{
   border:1px solid #e5e7eb;
   border-radius:24px;
   padding:24px;
-  margin-bottom:16px;
+  margin-bottom:8px;
   box-shadow:0 10px 28px rgba(15,23,42,.08);
 }
 
@@ -3141,8 +3141,13 @@ body.dark .backup-privacy-note p {
   gap:14px;
   padding:18px 18px 22px;
   border-radius:18px;
-  background:rgba(15,23,42,.88);
+  background: #fbfaf8;
   border:1px solid rgba(148,163,184,.14);
+}
+
+body.dark .settings-item{
+  background:rgba(15,23,42,.88);
+
 }
 
 .settings-icon i{
@@ -3155,13 +3160,18 @@ body.dark .backup-privacy-note p {
 
 .settings-text h3{
   margin:0;
-  color:#fff;
+  color:#111;
   font-size:17px;
 }
 
+body.dark .settings-text h3{
+  color: #fff;
+}
+
+
 .settings-text p{
   margin:4px 0 0;
-  color:#cbd5e1;
+  color:#5e656e;
   font-size:14px;
 }
 
@@ -3385,7 +3395,7 @@ body.dark .budget-insight-card{
   background:#ffffff;
   border:1px solid #e5e7eb;
   border-radius:20px;
-  margin-bottom:14px;
+  margin-bottom:8px;
   overflow:hidden;
   box-shadow:0 8px 20px rgba(15,23,42,.06);
 }
