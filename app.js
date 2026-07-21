@@ -23,6 +23,7 @@ import {
  setDoc,
  getDoc,
  getDocs,
+ writeBatch,
  query,
  where
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -39,22 +40,7 @@ import {
  onAuthStateChanged,
  signOut
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-/*
 
-// REPLACE WITH YOUR FIREBASE CONFIG
-
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyDmB5Y3F8K5cDFzBt1nG8OXqlKF1Qa8fsY",
-  authDomain: "bantaybudget101.firebaseapp.com",
-  projectId: "bantaybudget101",
-  storageBucket: "bantaybudget101.firebasestorage.app",
-  messagingSenderId: "151522764289",
-  appId: "1:151522764289:web:4834211cda5c01e5794200",
-  measurementId: "G-WXNRL2RNYE"
-};
-
-*/
 
 // THIS FIREBASE IS FOR THE PRODUCTION //
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
@@ -71,6 +57,9 @@ const firebaseConfig = {
 let notificationsRef;
 let notifications = [];
 let unsubscribeNotifications = null;
+
+const APP_VERSION = "Version 1.0.0";
+const APP_BUILD = "Build 2026.06.30.01";
 
 // Push Notifications //
 
@@ -172,12 +161,145 @@ notificationToggle.checked = true;
 }
 
 }
-/*
-if ("Notification" in window) {
-  Notification.requestPermission();
+
+function getLocalMonthString(){
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
 }
-*/
-///////////////////////////////////////////////
+
+function getLocalDateString(){
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+
+////////// EXPORT BACKUP ////////////
+
+
+async function exportBackup() {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("Please login first.");
+    return;
+  }
+
+  const collectionsToBackup = [
+    "inflows",
+    "expenses",
+    "recurringExpenses"
+  ];
+
+  const backup = {
+    app: "Bantay Budget",
+    version: "1.0.0",
+    exportedAt: new Date().toISOString(),
+    uid: user.uid,
+    data: {}
+  };
+
+  try {
+    for (const collectionName of collectionsToBackup) {
+      const snapshot = await getDocs(
+        collection(db, "users", user.uid, collectionName)
+      );
+
+      backup.data[collectionName] = snapshot.docs.map(docSnap => ({
+        id: docSnap.id,
+        ...docSnap.data()
+      }));
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(backup, null, 2)],
+      { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const fileName =
+  `bantay-budget-backup-${getLocalDateString()}.json`;
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+
+    URL.revokeObjectURL(url);
+
+    alert("✅ Backup exported successfully.");
+  } catch (error) {
+    console.error("Backup export error:", error);
+    alert("Failed to export backup.");
+  }
+}
+
+////// RESTORE BACKUP DATA /////
+
+async function restoreBackup(file) {
+  const user = auth.currentUser;
+  if (!user) {
+    alert("Please login first.");
+    return;
+  }
+
+  if (!file) return;
+
+  const confirmed = confirm(
+    "This will replace your current inflows, expenses, and recurring expenses with the backup file. Continue?"
+  );
+
+  if (!confirmed) return;
+
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+
+    if (
+      !backup ||
+      backup.app !== "Bantay Budget" ||
+      !backup.data
+    ) {
+      alert("Invalid backup file.");
+      return;
+    }
+
+    const collectionsToRestore = [
+      "inflows",
+      "expenses",
+      "recurringExpenses"
+    ];
+
+    for (const collectionName of collectionsToRestore) {
+      const currentSnapshot = await getDocs(
+        collection(db, "users", user.uid, collectionName)
+      );
+
+      for (const docSnap of currentSnapshot.docs) {
+        await deleteDoc(
+          doc(db, "users", user.uid, collectionName, docSnap.id)
+        );
+      }
+
+      const items = backup.data[collectionName] || [];
+
+      for (const item of items) {
+        const { id, ...data } = item;
+
+        await setDoc(
+          doc(db, "users", user.uid, collectionName, id),
+          data
+        );
+      }
+    }
+
+    alert("✅ Backup restored successfully.");
+  } catch (error) {
+    console.error("Backup restore error:", error);
+    alert("Failed to restore backup.");
+  }
+}
+
 
 /////#####################////////////
 
@@ -189,28 +311,9 @@ const db = initializeFirestore(app, {
 });
 const auth = getAuth(app);
 
-/*
-onMessage(messaging, (payload) => {
-  console.log("Foreground message received:", payload);
 
-  if (Notification.permission === "granted") {
-    new Notification(
-      payload.notification?.title || "Bantay Budget",
-      {
-        body: payload.notification?.body || "You have a new notification.",
-        icon: "icons/icon-192.png"
-      }
-    );
-  }
-});
 
-await setPersistence(
-  auth,
-  browserLocalPersistence
-);
-*/
-
-//*******************************//
+//*************HELPER FUNCTIONS******************//
 
 function formatCurrency(amount){
 
@@ -224,7 +327,36 @@ function formatCurrency(amount){
 
 }
 
-////////// Start rebuilding here //////
+/// Notification timestamp //
+
+function formatRelativeTime(timestamp){
+
+  const seconds =
+    Math.floor((Date.now() - timestamp) / 1000);
+
+  if(seconds < 60)
+    return "Just now";
+
+  const minutes =
+    Math.floor(seconds / 60);
+
+  if(minutes < 60)
+    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
+
+  const hours =
+    Math.floor(minutes / 60);
+
+  if(hours < 24)
+    return `${hours} hour${hours > 1 ? "s" : ""} ago`;
+
+  const days =
+    Math.floor(hours / 24);
+
+  if(days === 1)
+    return "Yesterday";
+
+  return `${days} days ago`;
+}
 
 /* =====================================
    STARTUP MANAGER
@@ -304,6 +436,7 @@ if(user){
 
 }
 
+
 let appLockScrollY = 0;
 
 function showAppLock(){
@@ -325,6 +458,7 @@ function showAppLock(){
 
   lock.classList.remove("hidden");
 }
+
 
 function hideAppLock(){
   const lock =
@@ -358,6 +492,7 @@ function lockAppWhenAway(){
   }
   showAppLock();
 }
+
 
 let appLockTimer = null;
 const APP_LOCK_DELAY = 3 * 60 * 1000; // 3 minutes
@@ -447,8 +582,8 @@ function checkAppReady(){
 }
 
 
-
 ////////////////////////////////////////////////////////////
+
 let inflowsRef;
 let expensesRef;
 let recurringRef;
@@ -467,8 +602,7 @@ const filterMonth =
 
 const today = new Date();
 
-filterMonth.value =
-  today.toISOString().slice(0,7);
+filterMonth.value = getLocalMonthString();
   
 filterMonth.addEventListener("change", render);
 
@@ -883,6 +1017,32 @@ notifications = [];
   return;
 }
     
+  // FAQ's//
+
+  document
+  .querySelectorAll(".faq-question")
+  .forEach(question => {
+
+    question.addEventListener("click", () => {
+
+      const currentItem = question.parentElement;
+
+      document
+        .querySelectorAll(".faq-item")
+        .forEach(item => {
+
+          if(item !== currentItem){
+            item.classList.remove("open");
+          }
+
+        });
+
+      currentItem.classList.toggle("open");
+
+    });
+
+  });
+
     // -------------------------
     // USER LOGGED IN
     // -------------------------
@@ -1146,7 +1306,8 @@ function hideSaving(){
 
   try {
 
-    // your existing save logic here
+    // existing save logic here //
+
 const isRecurring =
     document.getElementById('isRecurring').checked;
 
@@ -1285,46 +1446,23 @@ if(day > daysInMonth){
   day = daysInMonth;
 }
 
-
 const generatedDate =
  `${year}-${month}-${String(day).padStart(2,'0')}`;
 
-   /* const existingQuery =
-    query(
-      expensesRef,
-      where(
-        'desc',
-        '==',
-        recurring.desc
-      ),
-      where(
-        'date',
-        '==',
-        generatedDate
-      )
-    );
-
-   const existing =
-    await getDocs(existingQuery);
-
-   if(!existing.empty)
-    continue; */
   
-  const existingQuery = query(
-  expensesRef,
-  where("recurringTemplateId", "==", recurringDoc.id),
-  where("dueDate", "==", generatedDate)
-);
+  const expenseId =
+  `${recurringDoc.id}_${year}_${month}`;
 
-const existing =
-  await getDocs(existingQuery);
+const expenseDocRef =
+  doc(expensesRef, expenseId);
 
-if(!existing.empty){
+const existingExpense =
+  await getDoc(expenseDocRef);
 
+if(existingExpense.exists()){
   console.log(
     "Skipped duplicate:",
-    recurringDoc.id,
-    generatedDate
+    expenseId
   );
 
   continue;
@@ -1332,14 +1470,14 @@ if(!existing.empty){
 
 console.log(
   "Creating recurring expense:",
-  recurringDoc.id,
+  expenseId,
   generatedDate
 );
-  
-  const todayDate =
+
+const todayDate =
   `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  
-   await addDoc(expensesRef,{
+
+await setDoc(expenseDocRef,{
   type:"EXPENSE",
   date: todayDate,
   dueDate: generatedDate,
@@ -1359,6 +1497,7 @@ console.log(
 // EDIT RECURRING MODAL //
 
 let editingRecurringId = null;
+let editingExpenseId = null;
 
 window.toggleRecurring = async function(id, active){
 
@@ -1455,6 +1594,7 @@ window.editRecurring = async function(id){
 
 //SAVE RECURRING AFTER EDITING/UPDATING
 
+
 document.getElementById(
   'saveRecurringEditBtn'
 ).onclick = async ()=>{
@@ -1477,6 +1617,7 @@ document.getElementById(
         'editRecurringDay'
       ).value
     );
+    
 
   // UPDATE TEMPLATE
 
@@ -1491,62 +1632,53 @@ document.getElementById(
     {
       desc,
       amount,
-      recurringDay
     }
   );
 
-  // UPDATE GENERATED EXPENSE
-
-  const expenseQuery =
-    query(
-      expensesRef,
-      where(
-        'recurringTemplateId',
-        '==',
-        editingRecurringId
-      )
-    );
-
-  const snapshot =
-    await getDocs(
-      expenseQuery
-    );
-
-  const today =
-    new Date();
-
-  const newDate =
-    `${today.getFullYear()}-${String(
-      today.getMonth()+1
-    ).padStart(2,'0')}-${String(
-      recurringDay
-    ).padStart(2,'0')}`;
-
-  for(const expenseDoc of snapshot.docs){
-
-    await updateDoc(
-      doc(
-        db,
-        'users',
-        auth.currentUser.uid,
-        'expenses',
-        expenseDoc.id
-      ),
-      {
-        desc,
-        amount,
-        recurringDay,
-        date:newDate
-      }
-    );
-
-  }
 
   document
     .getElementById(
       'editRecurringModal'
     )
     .classList.remove('show');
+
+};
+
+
+window.editGeneratedRecurringExpense = async function(id){
+
+  const user = auth.currentUser;
+
+  if(!user) return;
+
+  const expense =
+    expenses.find(e => e.id === id);
+
+  if(!expense) return;
+
+  const desc =
+    prompt("Edit Description", expense.desc);
+
+  if(desc === null) return;
+
+  const date =
+    prompt("Edit Date (YYYY-MM-DD)", expense.date);
+
+  if(date === null) return;
+
+  const amount =
+    prompt("Edit Amount", expense.amount);
+
+  if(amount === null) return;
+
+  await updateDoc(
+    doc(db, "users", user.uid, "expenses", id),
+    {
+      desc,
+      date,
+      amount:Number(amount)
+    }
+  );
 
 };
 
@@ -1649,7 +1781,7 @@ function updateRecurringNotifications(){
       <div class="notification-item ${item.read ? "read" : "unread"}">
 
         <div class="notification-icon">
-          <i class="fa-solid fa-repeat"></i>
+          <i class="fa-solid fa-arrows-rotate"></i>
         </div>
 
         <div class="notification-body">
@@ -1659,6 +1791,10 @@ function updateRecurringNotifications(){
 
           <div class="notification-text">
             ${item.message || ""} • ${formatCurrency(item.amount || 0)}
+          </div>
+
+          <div class="notification-time">
+          ${formatRelativeTime(item.created)}
           </div>
 
           ${!item.read ? `
@@ -1676,6 +1812,88 @@ function updateRecurringNotifications(){
 
   });
 
+async function markAllNotificationsRead(){
+
+  if(!notificationsRef) return;
+
+  const unread =
+    notifications.filter(n => !n.read);
+
+  if(unread.length === 0) return;
+
+  const batch = writeBatch(db);
+
+  unread.forEach(item => {
+    batch.update(
+      doc(notificationsRef, item.id),
+      { read:true }
+    );
+  });
+
+  await batch.commit();
+}
+
+async function clearOldNotifications(){
+
+  if(!notificationsRef) return;
+
+  const confirmClear = confirm(
+  "Delete read notifications older than 7 days?");
+  
+  if(!confirmClear) return;
+
+  const DAYS_TO_KEEP = 7;
+
+const retentionPeriod =
+  DAYS_TO_KEEP * 24 * 60 * 60 * 1000;
+
+  const now = Date.now();
+
+  const oldRead =
+    notifications.filter(item =>
+      item.read &&
+      item.created &&
+      now - item.created > retentionPeriod
+    );
+
+  if(oldRead.length === 0){
+    alert("No old read notifications to clear.");
+    return;
+  }
+
+  const batch = writeBatch(db);
+
+  oldRead.forEach(item => {
+    batch.delete(
+      doc(notificationsRef, item.id)
+    );
+  });
+
+  await batch.commit();
+}
+
+const markAllReadBtn =
+  document.getElementById("markAllReadBtn");
+
+const clearOldNotificationsBtn =
+  document.getElementById("clearOldNotificationsBtn");
+
+if(markAllReadBtn){
+  markAllReadBtn.onclick = markAllNotificationsRead;
+  markAllReadBtn.disabled =
+    !notifications.some(n => !n.read);
+}
+
+if(clearOldNotificationsBtn){
+  clearOldNotificationsBtn.onclick = clearOldNotifications;
+  clearOldNotificationsBtn.disabled =
+    !notifications.some(n =>
+      n.read &&
+      n.created &&
+      Date.now() - n.created >
+        7 * 24 * 60 * 60 * 1000
+    );
+}
 }
 
 // LISTEN TO NOTIFS //
@@ -1733,39 +1951,46 @@ window.sendTestPush = async function () {
 
 };
 
+// RENDER FUNCTIONS// 
 
-
-// RENDER FUCNTIONS// 
 function render(){
- const filter = document.getElementById('filterMonth').value;
+ 
+  const filter = document.getElementById('filterMonth').value;
 
-inflowsList.innerHTML='';
-expensesList.innerHTML='';
+inflowsList.innerHTML = '';
+expensesList.innerHTML = '';
 
+function getExpenseMonth(e){
+  if(e.recurring && e.dueDate){
+    return e.dueDate.slice(0, 7);
+  }
+
+  return e.date ? e.date.slice(0, 7) : "";
+}
 
 const filteredInflows =
- inflows.filter(i=>
-  !filter ||
-  (
-    (i.date && i.date.startsWith(filter)) ||
-    (i.month && i.month===filter)
-  )
-);
+  inflows.filter(i =>
+    !filter ||
+    (
+      (i.date && i.date.startsWith(filter)) ||
+      (i.month && i.month === filter)
+    )
+  );
 
-const filteredExpenses = expenses.filter(e =>
-  !filter || e.date.startsWith(filter)
-);
+const filteredExpenses =
+  expenses.filter(e =>
+    !filter || getExpenseMonth(e) === filter
+  );
 
 let displayExpenses = filteredExpenses;
 
 if(currentView === 'EXPENSES'){
-  
   displayExpenses =
-  filteredExpenses
-    .filter(e => !e.recurring)
-    .sort((a,b) =>
-      new Date(b.date) - new Date(a.date)
-    );
+    filteredExpenses
+      .filter(e => !e.recurring)
+      .sort((a,b) =>
+        new Date(b.date) - new Date(a.date)
+      );
 }
 
 if(currentView === 'RECURRING'){
@@ -1773,8 +1998,8 @@ if(currentView === 'RECURRING'){
     filteredExpenses
       .filter(e => e.recurring)
       .sort((a,b) =>
-        Number(b.recurringDay || 0) -
-        Number(a.recurringDay || 0)
+        new Date(b.dueDate || b.date) -
+        new Date(a.dueDate || a.date)
       );
 }
 
@@ -1966,7 +2191,7 @@ displayExpenses.forEach(item => {
 
         <div class="money-info">
           <h3>${item.desc}</h3>
-          <p>
+         <p>
           📅 ${new Date(item.date).toLocaleDateString(
           "en-US",
         {
@@ -1975,7 +2200,7 @@ displayExpenses.forEach(item => {
           year: "numeric"
           }
             )}
-          </p>
+          </p> 
         </div>
 
         <div class="money-amount">
@@ -1995,9 +2220,9 @@ displayExpenses.forEach(item => {
       <div class="money-card-bottom">
         ${
           item.recurring
-            ? `<span class="recurring-badge">
-                 <span class="recurring-icon">🔁</span>
-                  ${recurringBadgeDate}
+            ? `<span class="recurring-badge"> Due on: 
+                  ${recurringBadgeDate} 
+                  <span class="recurring-icon">🔁</span>
                </span>`
             : `<span></span>`
         }
@@ -2006,19 +2231,12 @@ displayExpenses.forEach(item => {
           ${
             item.recurring
               ? `
-                <button onclick="alert('Edit this item from Recurring Expenses Management.')">
-                  <span class="action-icon">
-  <i class="fa-solid fa-lock"></i>
-</span>
+               <button onclick="editGeneratedRecurringExpense('${item.id}')">
+                  <i class="fas fa-edit"></i>
                 </button>
               `
               : `
-                <button onclick="editExpense(
-                  '${item.id}',
-                  '${item.desc}',
-                  '${item.date}',
-                  '${item.amount}'
-                )">
+                <button onclick="editExpense('${item.id}')">
                 
                   <span class="action-icon">
     <i class="fas fa-edit"></i>
@@ -2062,24 +2280,15 @@ document.getElementById("allocableBalance").textContent =
 
 document.getElementById("availableBalance").textContent =
     formatCurrency(available);
-    
-    updateDynamicTip(
-  inflowTotal,
-  paidTotal,
-  pendingTotal,
-  onHoldTotal,
-  allocable,
-  available,
-);
 
-updateDynamicOverviewMessage(
+updateBudgetInsight({
   inflowTotal,
   paidTotal,
   pendingTotal,
   onHoldTotal,
   allocable,
-  available,
-);
+  available
+});
 
 if(displayExpenses.length === 0){
   expensesList.innerHTML = `
@@ -2104,7 +2313,9 @@ if(filteredInflows.length===0){
 
 updateRecurringNotifications();
 
-// --------------- //
+// --------Fianacial Tips------- //
+
+updateFinanceTip();
 }
 
 window.deleteInflow = async(id)=>{
@@ -2176,61 +2387,47 @@ window.editInflow = async(
 
 };
 
-window.editExpense = async(
- id,
- currentDesc,
- currentDate,
- currentAmount
-)=>{
-  
-  const expenseDoc =
-  await getDoc(
-    doc(
-      db,
-      'users',
-      auth.currentUser.uid,
-      'expenses',
-      id
-    )
+window.editExpense = async function(id){
+
+  console.log("editExpense clicked:", id);
+
+  const user = auth.currentUser;
+  if(!user) return;
+
+  const expense = expenses.find(e => e.id === id);
+
+  console.log("found expense:", expense);
+
+  if(!expense) return;
+
+  if(expense.recurring){
+    editGeneratedRecurringExpense(id);
+    return;
+  }
+
+  const desc =
+    prompt("Edit Description", expense.desc);
+
+  if(desc === null) return;
+
+  const date =
+    prompt("Edit Date (YYYY-MM-DD)", expense.date);
+
+  if(date === null) return;
+
+  const amount =
+    prompt("Edit Amount", expense.amount);
+
+  if(amount === null) return;
+
+  await updateDoc(
+    doc(db, "users", user.uid, "expenses", id),
+    {
+      desc,
+      date,
+      amount:Number(amount)
+    }
   );
-
-if(expenseDoc.data()?.recurring){
-
-  alert(
-    'Recurring expenses must be edited from Recurring Expenses Management.'
-  );
-
-  return;
-}
-
- const user = auth.currentUser;
-
- if(!user) return;
-
- const desc =
- prompt('Edit Description', currentDesc);
-
- if(desc === null) return;
-
- const date =
- prompt('Edit Date (YYYY-MM-DD)', currentDate);
-
- if(date === null) return;
-
- const amount =
- prompt('Edit Amount', currentAmount);
-
- if(amount === null) return;
-
- await updateDoc(
-   doc(db,'users',user.uid,'expenses',id),
-   {
-     desc,
-     date,
-     amount:Number(amount)
-   }
- );
-
 };
 
 
@@ -2293,34 +2490,49 @@ showRecurringBtn.addEventListener("click", () => {
   setActiveSegment("showRecurringBtn");
 });
 
-// DYNAMIC OVERVIEW //
-function updateDynamicOverviewMessage(
-inflowTotal,
-  paidTotal,
-  pendingTotal,
-  onHoldTotal,
-  allocable,
-  available,
-  ){
-    
-  const overviewText = document.getElementById("overview");
-  let overviewMessage = "";
-  
-  if (
-    inflowTotal === 0 &&
-  paidTotal === 0 &&
-  pendingTotal === 0 &&
-  onHoldTotal === 0 &&
-  allocable === 0 &&
-  available === 0
-    ){
-      overviewMessage = "Welcome to Bantay Budget! <br> Add your first income or expense to begin.";
-      
-      }else{
-        overviewMessage = "Here's your financial overview.";
-        }
-        overviewText.innerHTML = `${overviewMessage}`;
+  // EXPORT BACKUP CONECT TO UI////
+
+  const backupDataBtn =
+  document.getElementById("backupDataBtn");
+
+const restoreDataInput =
+  document.getElementById("restoreDataInput");
+
+backupDataBtn?.addEventListener("click", exportBackup);
+
+restoreDataInput?.addEventListener("change", e => {
+
+  const file = e.target.files[0];
+  if(!file) return;
+  const confirmRestore = confirm(
+    "Restore this backup?\n\nThis will merge or replace your current data."
+  );
+  if(!confirmRestore){
+    e.target.value = "";
+    return;
   }
+  restoreBackup(file);
+  e.target.value = "";
+});
+
+
+//About Page //
+
+const aboutAppBtn = document.getElementById("aboutAppBtn");
+const aboutPage = document.getElementById("aboutPage");
+const closeAboutPage = document.getElementById("closeAboutPage");
+
+if(aboutAppBtn && aboutPage){
+  aboutAppBtn.onclick = () => {
+    aboutPage.classList.add("show");
+  };
+}
+
+if(closeAboutPage && aboutPage){
+  closeAboutPage.onclick = () => {
+    aboutPage.classList.remove("show");
+  };
+}
 
 
   // CREATE MERK READ FOR THE NOTIFICATIONS //
@@ -2339,53 +2551,141 @@ async function(id){
     );
 
 }
-  
-// DYNAMIC TIPS FUNCTION //
 
-function updateDynamicTip(
+//Dynamic Budget Insight Helper Function//
+
+function updateBudgetInsight({
   inflowTotal,
   paidTotal,
   pendingTotal,
   onHoldTotal,
   allocable,
-  available,
+  available
+}){
 
-) {
-  const tipIcon = document.getElementById("tipIcon");
-  const tipText = document.getElementById("summaryTipText");
-  //const shortage = pendingTotal - allocable;
+  const card = document.getElementById("budgetInsight");
+  const title = document.getElementById("insightTitle");
+  const text = document.getElementById("insightText");
+
+  if(!card || !title || !text) return;
+
+  card.className = "budget-insight-card";
+
+  if(inflowTotal === 0){
+    title.textContent = "No inflows yet";
+    text.textContent = "Add your income first so Bantay Budget can calculate your available balance.";
+    card.classList.add("neutral");
+    return;
+  }
+
+  if(pendingTotal > allocable){
+    title.textContent = "Budget Watch";
+    text.textContent =
+      `Your pending payments total ${formatCurrency(pendingTotal)}, is higher than your allocable balance of ${formatCurrency(allocable)}.`;
+    card.classList.add("warning");
+    return;
+  }
+
+  if(pendingTotal > 0 && pendingTotal <= allocable){
+    title.textContent = "Upcoming Payments";
+    text.textContent =
+  `Good news! Your allocable balance of ${formatCurrency(allocable)} is enough to cover your pending payments totaling ${formatCurrency(pendingTotal)}.`;
+    card.classList.add("info");
+    return;
+  }
+
+  if(onHoldTotal > 0){
+    title.textContent = "On Hold Items";
+    text.textContent =
+      `${formatCurrency(onHoldTotal)} is currently on hold and not deducted from your allocable balance.`;
+    card.classList.add("neutral");
+    return;
+  }
+
+  title.textContent = "Great job!";
+  text.textContent =
+    `All tracked payments are settled. Your available balance is ${formatCurrency(available)}.`;
+  card.classList.add("success");
+}
   
-  if (!tipText) return;
+// DYNAMIC TIPS FUNCTION //
 
-  let tip = "Keep tracking your expenses to maintain a healthy balance.";
+const financeTips = [
 
-  if (inflowTotal <= 0) {
-  tipIcon.textContent = "💰";
-  tip = "Add your first income to start tracking your finances.";
+  { icon:"💰", text:"Pay yourself first. Save before spending." },
+
+  { icon:"📈", text:"Track every expense, even the smallest ones." },
+
+  { icon:"💳", text:"Avoid carrying credit card balances whenever possible." },
+
+  { icon:"🏦", text:"Build an emergency fund covering 3–6 months of expenses." },
+
+  { icon:"📅", text:"Pay bills before their due date to avoid penalties." },
+
+  { icon:"🛒", text:"Create a shopping list to reduce impulse purchases." },
+
+  { icon:"🚗", text:"Review recurring subscriptions every few months." },
+
+  { icon:"📊", text:"Review your budget at least once every month." },
+
+  { icon:"🌱", text:"Small savings made consistently grow over time." },
+
+  { icon:"🎯", text:"Set realistic financial goals and celebrate your progress." },
+
+  { icon:"💵", text:"Spend less than you earn every month." },
+
+  { icon:"📚", text:"Invest in learning—financial knowledge pays lifelong dividends." }
+
+];
+
+function updateFinanceTip(){
+
+    const tipIcon =
+        document.getElementById("tipIcon");
+
+    const tipText =
+        document.getElementById("tipText");
+
+    if(!tipIcon || !tipText) return;
+
+    const today =
+        new Date().toDateString();
+
+    const savedDate =
+        localStorage.getItem("financeTipDate");
+
+    let index =
+        Number(localStorage.getItem("financeTipIndex"));
+
+    if(savedDate !== today || isNaN(index)){
+
+        index =
+            Math.floor(
+                Math.random() *
+                financeTips.length
+            );
+
+        localStorage.setItem(
+            "financeTipDate",
+            today
+        );
+
+        localStorage.setItem(
+            "financeTipIndex",
+            index
+        );
+
+    }
+
+    tipIcon.textContent =
+        financeTips[index].icon;
+
+    tipText.textContent =
+        financeTips[index].text;
+
 }
-/* else if (available <= 0) {
-  tipIcon.textContent = "🚨";
-  tip = "Your balance is running low.";
-}*/
-else if (pendingTotal > allocable) {
-  tipIcon.textContent = "⚠️";
-  tip = "Pending expenses exceed your Allocable Balance.";
-}
-else if (pendingTotal > 0) {
-  tipIcon.textContent = "⏳";
-  tip = "You still have pending expenses.";
-}
-else if (onHoldTotal > 0) {
-  tipIcon.textContent = "⏸️";
-  tip = "You have expenses on hold.";
-}
-else {
-  tipIcon.textContent = "🌱";
-  tip = "Excellent! Your finances look healthy this month.";
-}
-  
-  tipText.innerHTML = `<strong>Tip:</strong> ${tip}`;
-}
+
+
 
 // Exporting CSV File //
 
@@ -2442,10 +2742,7 @@ if(
  a.href =
   URL.createObjectURL(blob);
  const exportMonth =
-  filter ||
-  new Date()
-   .toISOString()
-   .slice(0,7);
+  filter || getLocalMonthString();
  a.download =
   `Budget Summary for ${exportMonth}.csv`;
  a.click();
@@ -2491,11 +2788,18 @@ if (appContainer) {
 }
 
 
-	//footer
+	//footer main page //
 			document.getElementById("year").textContent =
   new Date().getFullYear();
 
+  //Footer About Page //
 
+  const copyrightYear = document.getElementById("copyrightYear");
+
+if(copyrightYear){
+  copyrightYear.textContent = new Date().getFullYear();
+}
+ 
 // MODAL
 
 const inflowModal =
@@ -2601,6 +2905,45 @@ profileBtn?.addEventListener("click", openSidebar);
 closeSidebarBtn?.addEventListener("click", closeSidebar);
 
 sidebarOverlay?.addEventListener("click", closeSidebar);
+
+ //OPEN/CLOSE FAQ's PAGE//
+
+ const faqCardBtn =
+  document.getElementById("faqCardBtn");
+
+const faqPage =
+  document.getElementById("faqPage");
+
+const closeFaqPage =
+  document.getElementById("closeFaqPage");
+
+if(faqCardBtn && faqPage){
+  faqCardBtn.addEventListener("click", () => {
+    console.log("FAQ clicked");
+  console.log(faqPage);
+    faqPage.classList.add("show");
+  });
+}
+
+if(closeFaqPage && faqPage){
+  closeFaqPage.addEventListener("click", () => {
+    faqPage.classList.remove("show");
+  });
+}
+
+//Developer External Link Open//
+
+const developerCard =
+    document.getElementById("developerCard");
+
+developerCard.onclick = () => {
+
+    window.open(
+        "https://reychamdev.vercel.app",
+        "_blank"
+    );
+
+};
 
 
 /* THEME */
@@ -3059,9 +3402,9 @@ window.addEventListener("load", () => {
 
 });
 
-// Version Number //
-document.getElementById(
-  "appVersion"
-).textContent = "1.0.0"
+// Version/Build Number //
+
+document.getElementById("appVersion").textContent = APP_VERSION;
+document.getElementById("appBuild").textContent = APP_BUILD;
 
 // ENDDD//

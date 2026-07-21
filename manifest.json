@@ -1,6 +1,6 @@
 {
-  "name": "Monthly Expenses Tracker",
-  "short_name": "ExpensesTracker",
+  "name": "Smart Personal Finance App",
+  "short_name": "Bantay Budget",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#111827",

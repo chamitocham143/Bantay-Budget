@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" href="icons/icon-512.png">
   <link
  rel="stylesheet"
- href="style.css?v=1.0.0"
+ href="style.css?v=1.0.2"
 />
 </head>
 <body>
@@ -42,7 +42,7 @@
 </div>
 
   <div class="app">
-    <section id="authSection" class="card" style="position:fixed;">
+    <section id="authSection" class="card">
        <div class="app-name" id="AppName">
       <div class="logo-container">
     <img
@@ -113,7 +113,6 @@
     <input type="month" id="filterMonth" />
   </div>
 </div>
-
 
 <section class="summary-dashboard">
   <div class="summary-hero-grid">
@@ -191,15 +190,25 @@
 </div>
     
   </div>
+
+
+  <!-- INSIGHT SECTION -->
+
+  <div id="budgetInsight" class="budget-insight-card">
+  <div class="insight-icon">💡</div>
+  <div>
+    <h3 id="insightTitle">Budget Insight</h3>
+    <p id="insightText">Loading insight...</p>
+  </div>
+</div>
   
  
   <!-- TIP SECTION -->
   
     <div class="summary-tip">
     <div class="tip-icon" id="tipIcon">💡</div>
-     <p id="summaryTipText">
-      <strong>Tip:</strong> Keep tracking your expenses to maintain a healthy balance.
-    </p>
+    <strong>Tip:</strong> 
+     <p id="tipText"></p>
     <div class="tip-plant">🌱</div>
   </div>
   
@@ -453,9 +462,7 @@
 
   <div class="sidebar-menu">
 
-   <!-- <button id="dashBoard" class="sidebar-item">
-</button> -->
-
+  
     <button id="recurringExpensesBtn" class="sidebar-item">
       <i class="fa-solid fa-repeat"></i>
       Manage Recurring
@@ -463,7 +470,7 @@
     
     <button id="exportData" class="sidebar-item">
        <i class="fa-regular fa-file-excel" style="font-size:24px"></i>
-      Export Data (CSV)
+      Export File (CSV)
     </button>
     
     <button id="settingsBtn" class="sidebar-item">
@@ -481,12 +488,7 @@
   <button id="installBtn" style="display:none">
     📲 Install App
 </button>
-  <!--
-  <div class="sidebar-footer">
-  Version
-  <span id="appVersion"></span>
-</div>
--->
+ 
 </div>
 
 
@@ -516,7 +518,7 @@
 
   <div class="modal-content">
 
-    <h3> Edit Recurring Expense</h3>
+    <h3> Manage Recurring Expense</h3>
 
     <input id="editRecurringDesc">
 
@@ -525,7 +527,7 @@
       type="number"
     >
 
-    <select id="editRecurringDay"></select>
+    <select id="editRecurringDay" disabled></select>
     
     <div class="modal-actions">
 
@@ -560,63 +562,115 @@
     </button>
 </div>
     <div class="settings-body">
-
-        <!-- Everything goes here -->
         
-
     <!-- Appearance -->
     <div class="settings-section">
-      <h4 class="setting-title"> Appearance</h4>
-     <div class="setting-item">
-    <div class="setting-info">
-        <!-- <h5> Dark Mode</h5> -->
-        <p>Use dark mode</p>
-    </div>
+      
+<div class="settings-item">
+  <div class="settings-icon">
+    <i class="fa-solid fa-palette"></i>
+  </div>
 
-    <label class="switch">
-        <input
-            type="checkbox"
-            id="settingDarkMode">
-        <span class="slider"></span>
-    </label>
+  <div class="settings-text">
+    <h3>Appearance</h3>
+    <p>Use dark mode</p>
+  </div>
+
+  <label class="settings-switch">
+    <input type="checkbox" id="settingDarkMode">
+    <span></span>
+  </label>
 </div>
+
 </div>
 
     <!-- Security -->
     <div class="settings-section">
-      <h4 class="setting-title" >Login & Security</h4>
-    <div class="setting-item">
-    <div class="setting-info">
-        <!-- <h5> Biometric Lock</h5> -->
-        <p>Require Face ID / Fingerprint</p>
-    </div>
-    <label class="switch">
-        <input
-            type="checkbox"
-            id="settingBiometric">
-        <span class="slider"></span>
-    </label>
+
+      <div class="settings-item">
+  <div class="settings-icon">
+    <i class="fa-solid fa-shield-halved"></i>
+  </div>
+
+  <div class="settings-text">
+    <h3>Login & Security</h3>
+    <p>Require Face ID / Fingerprint</p>
+  </div>
+
+  <label class="settings-switch">
+    <input type="checkbox" id="settingBiometric">
+    <span></span>
+  </label>
 </div>
-    </div> <!-- end of security -->
+
+  </div> <!-- end of security -->
 
     <!-- Notifications -->
     <div class="settings-section">
-      <h4 class="setting-title"> Notifications</h4>
-    <div class="setting-item">
-    <div class="setting-info">
-       <!-- <h5> Expense Reminder</h5> -->
-        <p>Notify upcoming due dates</p>
-    </div>
 
-    <label class="switch">
-        <input
-            type="checkbox"
-            id="notificationToggle">
-        <span class="slider"></span>
-    </label>
+ <div class="settings-item">
+  <div class="settings-icon">
+   <i class="fa-solid fa-bell"></i>
+  </div>
 
+  <div class="settings-text">
+    <h3>Notifications</h3>
+     <p>Notify upcoming due dates</p>
+  </div>
+
+  <label class="settings-switch">
+    <input type="checkbox" id="notificationToggle">
+    <span></span>
+  </label>
 </div>
-    </div>
+</div>
+
+<div class="settings-card backup-card">
+  <div class="backup-header">
+  <div class="backup-header-icon">
+    <i class="fa-solid fa-cloud-arrow-up"></i>
+  </div>
+
+  <div class="backup-header-text">
+    <h3>Data Backup</h3>
+    <p>Export or restore your Bantay Budget data.</p>
+  </div>
+</div>
+
+  <div class="backup-grid">
+    <button id="backupDataBtn" class="backup-tile export-backup">
+      <span class="backup-tile-icon">
+        <i class="fa-solid fa-upload"></i>
+      </span>
+      <strong>Export Backup</strong>
+      <small>Export a copy of your data</small>
+    </button>
+
+    <label class="backup-tile restore-backup">
+      <input
+        type="file"
+        id="restoreDataInput"
+        accept="application/json"
+        hidden
+      />
+
+      <span class="backup-tile-icon">
+        <i class="fa-solid fa-download"></i>
+      </span>
+      <strong>Restore Backup</strong>
+      <small>Restore your data from your backup file</small>
+    </label>
+  </div>
+
+  <div class="backup-privacy-note">
+    <i class="fa-solid fa-shield-halved"></i>
+    <p>
+      <strong>Your data stays private.</strong><br />
+      Backup files are stored only on your device.
+    </p>
+  </div>
+</div>
+   
     
 
   <button
@@ -630,16 +684,127 @@
 
     <!-- About -->
 
-    <div class="settings-section">
-      
-      <h4 class="setting-title" >About</h4>
-        <div class="setting-item">
-        <div class="setting-info">
-      <p>Version <span id="appVersion" class="setting-value"></span></p>
-    </div>
-     </div>
-     </div>
+   <div class="settings-item" id="aboutAppBtn">
+  <div class="settings-icon">
+    <i class="fa-solid fa-circle-info"></i>
   </div>
+
+  <div class="settings-text">
+    <h3>About</h3>
+    <p>App version, developer, and information</p>
+  </div>
+
+  <i class="fa-solid fa-chevron-right settings-arrow"></i>
+</div>
+
+
+  </div>
+</div>
+
+<!--FAQ's Full Page-->
+
+<div id="faqPage" class="faq-page">
+
+<div class="faq-header">
+  <h3>FAQ’s</h3>
+
+  <button id="closeFaqPage" class="close-page-btn">
+    <i class="fa-solid fa-arrow-left"></i>
+  </button>
+</div>
+
+<div class="faq-content">
+
+  <div class="faq-section-title">
+    <span>📊</span>
+    Dashboard Summary Cards
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total Income?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Total Income shows all cash inflows recorded for the selected month.
+      </p>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total Paid?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Total Paid shows expenses marked as Paid. Only paid expenses reduce your available balance.
+      </p>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total Pending?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Total Pending shows expenses waiting to be paid. Pending expenses are not deducted until marked as Paid.
+      </p>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Allocable Balance?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Allocable Balance is the money currently available to pay for the Pending Balance.
+      </p>
+
+      <code>Total Income − Total Paid</code>
+    </div>
+  </div>
+
+  <div class="faq-item">
+    <button class="faq-question">
+      <span>What is Remaining Balance?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+      <p>
+        Remaining Balance estimates how much money will be left after pending expenses are paid.
+      </p>
+
+      <code>Allocable Balance − Total Pending</code>
+    </div>
+  </div>
+
+<div class="faq-item">
+    <button class="faq-question">
+      <span>What is Total On Hold?</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </button>
+
+    <div class="faq-answer">
+  <p>
+    Total On Hold represents expenses that you've temporarily set aside. They remain recorded in your budget but are excluded from active spending until you reactivate them.
+  </p>
+
+  <code>All expenses with an "On Hold" status</code>
+</div>    
+  </div>
+
+</div>
 </div>
 
 <!-- NOTIFICATIONS -->
@@ -654,8 +819,95 @@
   <div class="notifications-content">
     <div class="notifications-section">
       <h4>Upcoming Recurring Dues</h4>
+      <div class="notification-toolbar">
+  <button id="markAllReadBtn" class="notif-action-btn">
+    <i class="fa-solid fa-check-double"></i>
+    Mark All Read
+  </button>
+
+  <button id="clearOldNotificationsBtn" class="notif-action-btn danger">
+    <i class="fa-solid fa-trash-can"></i>
+    Clear Old
+  </button>
+</div>
+
       <div id="notificationList"></div>
     </div>
+  </div>
+</div>
+
+<div id="aboutPage" class="about-page">
+  <div class="about-header">
+    <button id="closeAboutPage" class="close-page-btn">
+      <i class="fa-solid fa-arrow-left"></i>
+    </button>
+
+    <h3>About</h3>
+  </div>
+
+  <div class="about-content">
+    <div class="about-hero">
+      <img src="icons/icon-192.png" alt="Bantay Budget Logo">
+      <h2>Bantay Budget</h2>
+      <p>Bantay ngayon, secure bukas.</p>
+      <p><span id="appVersion"></span></p>
+      <p><span id="appBuild"></span></p>
+    </div>
+
+    <div class="about-card">
+      <h4>About this app</h4>
+      <p>
+        Bantay Budget is a personal finance PWA designed to help you track
+        income, expenses, recurring dues, reminders, and your remaining balance.
+      </p>
+    </div>
+
+    <div class="about-card about-action-card" id="faqCardBtn">
+  <div class="about-action-icon">
+    <i class="fa-regular fa-circle-question"></i>
+  </div>
+
+  <div class="about-action-text">
+    <h4>FAQ’s</h4>
+    <p>Find answers to common questions</p>
+  </div>
+
+  <i class="fa-solid fa-chevron-right about-action-arrow"></i>
+</div>
+
+
+<div class="about-card about-action-card" id="developerCard">
+
+    <div class="about-action-icon">
+        <i class="fa-regular fa-user"></i>
+    </div>
+
+    <div class="about-action-text">
+        <h4>Developer</h4>
+        <p>Created by Reycham Pana.</p>
+    </div>
+
+    <i class="fa-solid fa-arrow-up-right-from-square about-action-arrow"></i>
+
+</div>
+<!--
+    <div class="about-card">
+      <h4>Website</h4>
+      <p>bantaybudget.fyi</p>
+    </div>
+
+  -->
+
+      <div class="about-app-footer">
+  <p class="about-app-copy">
+    © <span id="copyrightYear"></span> Bantay Budget
+  </p>
+
+  <p class="about-app-credit">
+    Designed &amp; Developed with ❤️ by Reycham Pana
+  </p>
+</div>
+
   </div>
 </div>
 
@@ -678,7 +930,7 @@
 
 <script
  type="module"
- src="app.js?v=1.0.1"
+ src="app.js"
 ></script> 
 
 </body>

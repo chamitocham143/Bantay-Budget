@@ -1,0 +1,5 @@
+{
+    "editor.guides.bracketPairs": "active",
+    "js/ts.format.insertSpaceAfterOpeningAndBeforeClosingNonemptyBrackets": true,
+    "editor.bracketPairColorization.independentColorPoolPerBracketType": true
+}
