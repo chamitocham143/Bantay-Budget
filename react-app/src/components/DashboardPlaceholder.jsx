@@ -25,6 +25,13 @@ import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
 import { sendTestPush } from "../services/developerTools.js";
 
+const MONTH_OPTIONS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+const YEAR_OPTIONS = Array.from({ length: 101 }, (_, index) => 2000 + index);
+
 function getGreeting() {
   const hour = new Date().getHours();
   if (hour < 5) return "😴 Tulog Na";
@@ -74,6 +81,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const { templates, loading: recurringLoading, error: recurringError } = useRecurringExpenses(user.uid);
   const notificationData = useNotifications(user.uid);
   const currentMonth = getLocalMonthString();
+  const [selectedYear, selectedMonthNumber] = selectedMonth.split("-");
   const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
   const { targetRef: pullTargetRef, pulling, refreshing } = usePullToRefresh();
 
@@ -369,7 +377,24 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
           <div className="dashboard-controls">
             <label className="month-filter">
               <span>Month</span>
-              <input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} />
+              <span className="month-picker">
+                <select
+                  aria-label="Month"
+                  value={selectedMonthNumber}
+                  onChange={(event) => setSelectedMonth(`${selectedYear}-${event.target.value}`)}
+                >
+                  {MONTH_OPTIONS.map((month, index) => (
+                    <option value={String(index + 1).padStart(2, "0")} key={month}>{month}</option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Year"
+                  value={selectedYear}
+                  onChange={(event) => setSelectedMonth(`${event.target.value}-${selectedMonthNumber}`)}
+                >
+                  {YEAR_OPTIONS.map((year) => <option value={year} key={year}>{year}</option>)}
+                </select>
+              </span>
             </label>
             <button className="add-inflow-button" type="button" onClick={() => setInflowModal({})}>+ Add Inflow</button>
             <button className="add-expense-button" type="button" onClick={() => setExpenseModal({})}>+ Add Expense</button>
