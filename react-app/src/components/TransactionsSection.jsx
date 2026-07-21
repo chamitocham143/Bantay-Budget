@@ -59,7 +59,7 @@ function InflowCard({ inflow, onEdit, onDelete }) {
   );
 }
 
-function ExpenseCard({ expense }) {
+function ExpenseCard({ expense, statusBusy, onStatusChange, onEdit, onDelete }) {
   const status = statusDetails[expense.status] || statusDetails["ON HOLD"];
 
   return (
@@ -77,8 +77,24 @@ function ExpenseCard({ expense }) {
       </div>
       <div className="transaction-value">
         <strong>-{formatCurrency(expense.amount)}</strong>
-        <span className={`status-badge ${status.className}`}>{status.label}</span>
+        <select
+          className={`expense-status-select ${status.className}`}
+          value={expense.status || "ON HOLD"}
+          disabled={statusBusy === expense.id}
+          onChange={(event) => onStatusChange(expense, event.target.value)}
+          aria-label={`Status for ${expense.desc || "expense"}`}
+        >
+          <option value="ON HOLD">On Hold</option>
+          <option value="PENDING">Pending</option>
+          <option value="PAID">Paid</option>
+        </select>
       </div>
+      {!expense.recurring && (
+        <div className="transaction-actions">
+          <button type="button" onClick={() => onEdit(expense)} aria-label={`Edit ${expense.desc || "expense"}`}>✎</button>
+          <button type="button" onClick={() => onDelete(expense)} aria-label={`Delete ${expense.desc || "expense"}`}>⌫</button>
+        </div>
+      )}
     </article>
   );
 }
@@ -101,7 +117,7 @@ function EmptyState({ view }) {
   );
 }
 
-function TransactionsSection({ inflows, expenses, onEditInflow, onDeleteInflow }) {
+function TransactionsSection({ inflows, expenses, onEditInflow, onDeleteInflow, onEditExpense, onDeleteExpense, onExpenseStatusChange, statusBusy }) {
   const [view, setView] = useState("ALL");
 
   const displayedInflows = view === "ALL" || view === "INFLOWS" ? inflows : [];
@@ -171,7 +187,7 @@ function TransactionsSection({ inflows, expenses, onEditInflow, onDeleteInflow }
                 <span>{displayedExpenses.length}</span>
               </div>
               <div className="transaction-list">
-                {displayedExpenses.map((expense) => <ExpenseCard expense={expense} key={expense.id} />)}
+                {displayedExpenses.map((expense) => <ExpenseCard expense={expense} key={expense.id} statusBusy={statusBusy} onStatusChange={onExpenseStatusChange} onEdit={onEditExpense} onDelete={onDeleteExpense} />)}
               </div>
             </section>
           )}

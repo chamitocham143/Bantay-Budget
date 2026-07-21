@@ -3,6 +3,7 @@ import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestor
 import SummaryDashboard from "./SummaryDashboard.jsx";
 import TransactionsSection from "./TransactionsSection.jsx";
 import InflowModal from "./InflowModal.jsx";
+import ExpenseModal from "./ExpenseModal.jsx";
 import ConfirmDialog from "./ConfirmDialog.jsx";
 import { getLocalMonthString, useBudgetData } from "../hooks/useBudgetData.js";
 import { db } from "../firebase.js";
@@ -23,6 +24,9 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const [inflowToDelete, setInflowToDelete] = useState(null);
   const [mutationBusy, setMutationBusy] = useState(false);
   const [mutationError, setMutationError] = useState("");
+  const [expenseModal, setExpenseModal] = useState(null);
+  const [expenseToDelete, setExpenseToDelete] = useState(null);
+  const [statusBusy, setStatusBusy] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
@@ -60,6 +64,50 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     }
   };
 
+  const saveExpense = async (values) => {
+    setMutationBusy(true);
+    setMutationError("");
+    try {
+      if (expenseModal?.id) {
+        await updateDoc(doc(db, "users", user.uid, "expenses", expenseModal.id), values);
+      } else {
+        await addDoc(collection(db, "users", user.uid, "expenses"), { type: "EXPENSE", ...values, created: Date.now() });
+      }
+      setExpenseModal(null);
+    } finally {
+      setMutationBusy(false);
+    }
+  };
+
+  const deleteExpense = async () => {
+    if (!expenseToDelete) return;
+    setMutationBusy(true);
+    setMutationError("");
+    try {
+      await deleteDoc(doc(db, "users", user.uid, "expenses", expenseToDelete.id));
+      setExpenseToDelete(null);
+    } catch (deleteError) {
+      console.error("Unable to delete expense:", deleteError);
+      setMutationError("Unable to delete the expense. Please try again.");
+      setExpenseToDelete(null);
+    } finally {
+      setMutationBusy(false);
+    }
+  };
+
+  const updateExpenseStatus = async (expense, status) => {
+    setStatusBusy(expense.id);
+    setMutationError("");
+    try {
+      await updateDoc(doc(db, "users", user.uid, "expenses", expense.id), { status });
+    } catch (statusError) {
+      console.error("Unable to update expense status:", statusError);
+      setMutationError("Unable to update the expense status. Please try again.");
+    } finally {
+      setStatusBusy(null);
+    }
+  };
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-topbar">
@@ -89,6 +137,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
               <input type="month" value={selectedMonth} onChange={(event) => setSelectedMonth(event.target.value)} />
             </label>
             <button className="add-inflow-button" type="button" onClick={() => setInflowModal({})}>+ Add Inflow</button>
+            <button className="add-expense-button" type="button" onClick={() => setExpenseModal({})}>+ Add Expense</button>
           </div>
         </div>
 
@@ -107,12 +156,14 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
               <article><strong>{inflows.length}</strong><span>Income records this month</span></article>
               <article><strong>{expenses.length}</strong><span>Expense records this month</span></article>
             </section>
-            <TransactionsSection inflows={inflows} expenses={expenses} onEditInflow={setInflowModal} onDeleteInflow={setInflowToDelete} />
+            <TransactionsSection inflows={inflows} expenses={expenses} onEditInflow={setInflowModal} onDeleteInflow={setInflowToDelete} onEditExpense={setExpenseModal} onDeleteExpense={setExpenseToDelete} onExpenseStatusChange={updateExpenseStatus} statusBusy={statusBusy} />
           </>
         )}
       </section>
       {inflowModal && <InflowModal inflow={inflowModal.id ? inflowModal : null} busy={mutationBusy} onClose={() => setInflowModal(null)} onSave={saveInflow} />}
+      {expenseModal && <ExpenseModal expense={expenseModal.id ? expenseModal : null} busy={mutationBusy} onClose={() => setExpenseModal(null)} onSave={saveExpense} />}
       {inflowToDelete && <ConfirmDialog title="Delete Inflow?" message={`Opps! Sure ka idelete ang ${inflowToDelete.desc || "inflow"}?`} busy={mutationBusy} onCancel={() => setInflowToDelete(null)} onConfirm={deleteInflow} />}
+      {expenseToDelete && <ConfirmDialog title="Delete Expense?" message={`Opps! Sure ka idelete ang ${expenseToDelete.desc || "expense"}?`} busy={mutationBusy} onCancel={() => setExpenseToDelete(null)} onConfirm={deleteExpense} />}
     </main>
   );
 }
