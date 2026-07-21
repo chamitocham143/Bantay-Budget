@@ -397,6 +397,57 @@ input:focus,
 .notification-item time { display: block; color: var(--muted); font-size: 10px; }
 .notification-item button { margin-top: 10px; padding: 5px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--primary-light); background: var(--input); font-size: 10px; font-weight: 850; }
 
+.drawer-backdrop { position: fixed; inset: 0; z-index: 4700; background: rgb(2 12 10 / 65%); backdrop-filter: blur(6px); }
+.profile-drawer { position: absolute; inset: 0 0 0 auto; width: min(88vw, 390px); padding: 24px 18px; display: flex; flex-direction: column; overflow-y: auto; outline: none; color: var(--text); background: var(--surface-solid); box-shadow: -22px 0 70px rgb(0 0 0 / 34%); }
+.drawer-header { padding: 4px 3px 22px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+.drawer-avatar,
+.settings-avatar { display: grid; place-items: center; border-radius: 50%; color: white; background: var(--primary); font-weight: 850; }
+.drawer-avatar { width: 50px; height: 50px; font-size: 19px; }
+.drawer-header h2 { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; }
+.drawer-header p { margin: 4px 0 0; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11px; }
+.drawer-header > button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; color: var(--muted); background: var(--input); font-size: 22px; }
+.drawer-menu { margin-top: 18px; display: grid; gap: 7px; }
+.drawer-menu button,
+.settings-list > button,
+.settings-static-row { width: 100%; min-height: 68px; padding: 12px; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; gap: 11px; border: 1px solid transparent; border-radius: 16px; text-align: left; color: var(--text); background: transparent; }
+.drawer-menu button:hover,
+.settings-list > button:hover { border-color: var(--border); background: var(--input); }
+.drawer-menu button > span,
+.settings-list > button > span,
+.settings-static-row > span { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 13px; background: var(--input); font-size: 18px; }
+.drawer-menu strong,
+.settings-list strong,
+.settings-static-row strong { display: block; font-size: 13px; }
+.drawer-menu small,
+.settings-list small,
+.settings-static-row small { display: block; margin-top: 4px; overflow-wrap: anywhere; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.drawer-menu i,
+.settings-list i { color: var(--muted); font-size: 20px; font-style: normal; }
+.drawer-menu b,
+.settings-list b { min-width: 24px; height: 24px; padding: 0 6px; display: grid; place-items: center; border-radius: 999px; color: white; background: #dc2626; font-size: 9px; }
+.drawer-logout,
+.settings-logout { min-height: 48px; border: 1px solid rgb(239 68 68 / 22%); border-radius: 15px; color: var(--danger); background: rgb(239 68 68 / 8%); font-weight: 850; }
+.drawer-logout { margin-top: auto; }
+.drawer-version { margin: 17px 0 0; text-align: center; color: var(--muted); font-size: 9px; }
+
+.settings-page { position: fixed; inset: 0; z-index: 4600; overflow-y: auto; color: var(--text); background: var(--page); }
+.settings-header { position: sticky; top: 0; z-index: 2; height: 72px; padding: 0 20px; display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter: blur(18px); }
+.settings-header h1 { text-align: center; font-size: 22px; }
+.settings-header button { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; color: var(--text); background: var(--surface); font-size: 20px; }
+.settings-content { width: min(100% - 28px, 680px); margin: 0 auto; padding: 24px 0 60px; }
+.settings-profile-card { padding: 20px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
+.settings-avatar { width: 62px; height: 62px; flex: 0 0 auto; font-size: 23px; }
+.settings-profile-card h2 { margin: 0; font-size: 19px; }
+.settings-profile-card p { margin: 4px 0 7px; color: var(--muted); font-size: 11px; }
+.settings-profile-card span { padding: 4px 8px; border-radius: 999px; color: #047857; background: rgb(16 185 129 / 13%); font-size: 9px; font-weight: 850; }
+:root[data-theme="dark"] .settings-profile-card span { color: #6ee7b7; }
+.settings-section-label { margin: 26px 4px 9px; color: var(--muted); font-size: 10px; font-weight: 850; letter-spacing: 0.12em; text-transform: uppercase; }
+.settings-list { padding: 5px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); }
+.settings-static-row em { color: #10b981; font-style: normal; font-weight: 900; }
+.settings-logout { width: 100%; margin-top: 26px; }
+.settings-footer { margin-top: 36px; display: grid; gap: 4px; text-align: center; color: var(--muted); font-size: 10px; }
+.settings-footer strong { color: var(--text); font-size: 12px; }
+
 @keyframes pulse { 50% { transform: scale(1.06); box-shadow: 0 18px 44px rgb(0 83 70 / 52%); } }
 @keyframes bounce { 0%, 80%, 100% { transform: scale(0.65); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
 

@@ -13,6 +13,8 @@ import { db } from "../firebase.js";
 import { useNotifications } from "../hooks/useNotifications.js";
 import NotificationsPage from "./NotificationsPage.jsx";
 import { disablePushNotifications, enablePushNotifications, PUSH_ENABLED_KEY } from "../services/pushNotifications.js";
+import ProfileDrawer from "./ProfileDrawer.jsx";
+import SettingsPage from "./SettingsPage.jsx";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -41,6 +43,10 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(PUSH_ENABLED_KEY) === "true");
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const [logoutBusy, setLogoutBusy] = useState(false);
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
@@ -209,6 +215,34 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     }
   };
 
+  const openNotifications = () => {
+    setDrawerOpen(false);
+    setSettingsOpen(false);
+    setNotificationsOpen(true);
+  };
+
+  const openRecurringManager = () => {
+    setDrawerOpen(false);
+    setSettingsOpen(false);
+    setRecurringManagerOpen(true);
+  };
+
+  const openSettings = () => {
+    setDrawerOpen(false);
+    setSettingsOpen(true);
+  };
+
+  const requestLogout = () => {
+    setDrawerOpen(false);
+    setSettingsOpen(false);
+    setConfirmLogout(true);
+  };
+
+  const confirmSignOut = async () => {
+    setLogoutBusy(true);
+    try { await onSignOut(); } finally { setLogoutBusy(false); }
+  };
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-topbar">
@@ -224,7 +258,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
           <button className="compact-theme-button" type="button" onClick={onToggleTheme} aria-label={`Use ${theme === "dark" ? "light" : "dark"} mode`}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
-          <button className="profile-initial" type="button" onClick={onSignOut} aria-label={`Sign out ${name}`}>
+          <button className="profile-initial" type="button" onClick={() => setDrawerOpen(true)} aria-label={`Open ${name} account menu`}>
             {name.charAt(0).toUpperCase()}
           </button>
         </div>
@@ -275,6 +309,9 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
       {recurringEditor && <RecurringTemplateModal template={recurringEditor.id ? recurringEditor : null} busy={mutationBusy} onClose={closeRecurringEditor} onSave={saveRecurringTemplate} />}
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
+      {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} unreadCount={notificationData.unreadCount} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onNotifications={openNotifications} onRecurring={openRecurringManager} onLogout={requestLogout} />}
+      {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
     </main>
   );
 }
