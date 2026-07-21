@@ -1,4 +1,3 @@
-import { deleteToken, getMessaging, getToken, isSupported } from "firebase/messaging";
 import { deleteDoc, doc, setDoc } from "firebase/firestore";
 import { db, firebaseApp } from "../firebase.js";
 
@@ -16,6 +15,7 @@ function getDeviceId() {
 }
 
 export async function enablePushNotifications(uid) {
+  const { getMessaging, getToken, isSupported } = await import("firebase/messaging");
   if (!("Notification" in window)) throw new Error("Push notifications are not supported by this browser.");
   if (!("serviceWorker" in navigator)) throw new Error("Service workers are not supported by this browser.");
   if (!(await isSupported())) throw new Error("Firebase messaging is not supported by this browser.");
@@ -38,6 +38,7 @@ export async function enablePushNotifications(uid) {
 }
 
 export async function disablePushNotifications(uid) {
+  const { deleteToken, getMessaging, isSupported } = await import("firebase/messaging");
   const deviceId = localStorage.getItem(DEVICE_ID_KEY);
   if (deviceId) await deleteDoc(doc(db, "users", uid, "devices", deviceId));
 
