@@ -1,0 +1,16 @@
+{
+  "name": "Bantay Budget",
+  "short_name": "Bantay Budget",
+  "description": "Track income, expenses, recurring dues, reminders, and your remaining balance.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#071c18",
+  "theme_color": "#005346",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
