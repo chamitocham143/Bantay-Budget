@@ -10,6 +10,9 @@ import { useRecurringExpenses } from "../hooks/useRecurringExpenses.js";
 import RecurringManager from "./RecurringManager.jsx";
 import RecurringTemplateModal from "./RecurringTemplateModal.jsx";
 import { db } from "../firebase.js";
+import { useNotifications } from "../hooks/useNotifications.js";
+import NotificationsPage from "./NotificationsPage.jsx";
+import { disablePushNotifications, enablePushNotifications, PUSH_ENABLED_KEY } from "../services/pushNotifications.js";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -34,12 +37,17 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const [recurringEditor, setRecurringEditor] = useState(null);
   const [templateToDelete, setTemplateToDelete] = useState(null);
   const [templateBusyId, setTemplateBusyId] = useState(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(PUSH_ENABLED_KEY) === "true");
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
     selectedMonth,
   );
   const { templates, loading: recurringLoading, error: recurringError } = useRecurringExpenses(user.uid);
+  const notificationData = useNotifications(user.uid);
   const currentMonth = getLocalMonthString();
 
   const saveInflow = async (values) => {
@@ -178,6 +186,29 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     }
   };
 
+  const togglePushNotifications = async (enabled) => {
+    setPushBusy(true);
+    setPushMessage(null);
+    try {
+      if (enabled) {
+        await enablePushNotifications(user.uid);
+        setPushEnabled(true);
+        setPushMessage({ type: "success", text: "Push notifications are enabled on this device." });
+      } else {
+        await disablePushNotifications(user.uid);
+        setPushEnabled(false);
+        setPushMessage({ type: "success", text: "Push notifications are disabled on this device." });
+      }
+    } catch (pushError) {
+      console.error("Push notification error:", pushError);
+      localStorage.setItem(PUSH_ENABLED_KEY, "false");
+      setPushEnabled(false);
+      setPushMessage({ type: "error", text: pushError.message || "Unable to update push notifications." });
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-topbar">
@@ -186,6 +217,10 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
           <h1>{getGreeting()}, {name} 👋</h1>
         </div>
         <div className="topbar-actions">
+          <button className="notification-button" type="button" onClick={() => setNotificationsOpen(true)} aria-label={`${notificationData.unreadCount} unread notifications`}>
+            🔔
+            {notificationData.unreadCount > 0 && <span>{notificationData.unreadCount > 99 ? "99+" : notificationData.unreadCount}</span>}
+          </button>
           <button className="compact-theme-button" type="button" onClick={onToggleTheme} aria-label={`Use ${theme === "dark" ? "light" : "dark"} mode`}>
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
@@ -239,6 +274,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
       {recurringManagerOpen && <RecurringManager templates={templates} loading={recurringLoading} busyId={templateBusyId} onClose={() => setRecurringManagerOpen(false)} onAdd={() => openRecurringEditor({})} onEdit={openRecurringEditor} onToggle={toggleRecurringTemplate} onDelete={requestTemplateDelete} />}
       {recurringEditor && <RecurringTemplateModal template={recurringEditor.id ? recurringEditor : null} busy={mutationBusy} onClose={closeRecurringEditor} onSave={saveRecurringTemplate} />}
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
+      {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
     </main>
   );
 }
