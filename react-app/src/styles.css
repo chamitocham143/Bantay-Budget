@@ -403,7 +403,7 @@ input:focus,
 .push-setting-card .switch-control { width: 50px; min-width: 50px; margin: 0; justify-self: end; }
 .switch-control { position: relative; width: 50px; height: 28px; flex: 0 0 auto; margin: 0; }
 .switch-control input { position: absolute; opacity: 0; pointer-events: none; }
-.switch-control span { position: absolute; inset: 0; border-radius: 999px; background: #94a3b8; transition: background 0.2s ease; }
+.switch-control > span { position: absolute; inset: 0; margin: 0; border-radius: 999px; background: #94a3b8; transition: background 0.2s ease; }
 .switch-control span::after { content: ""; position: absolute; top: 4px; left: 4px; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 2px 8px rgb(0 0 0 / 25%); transition: transform 0.2s ease; }
 .switch-control input:checked + span { background: var(--primary-light); }
 .switch-control input:checked + span::after { transform: translateX(22px); }
