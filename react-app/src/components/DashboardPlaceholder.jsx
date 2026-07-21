@@ -1,5 +1,6 @@
 import { useState } from "react";
 import SummaryDashboard from "./SummaryDashboard.jsx";
+import TransactionsSection from "./TransactionsSection.jsx";
 import { getLocalMonthString, useBudgetData } from "../hooks/useBudgetData.js";
 
 function getGreeting() {
@@ -63,6 +64,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
               <article><strong>{inflows.length}</strong><span>Income records this month</span></article>
               <article><strong>{expenses.length}</strong><span>Expense records this month</span></article>
             </section>
+            <TransactionsSection inflows={inflows} expenses={expenses} />
           </>
         )}
       </section>
