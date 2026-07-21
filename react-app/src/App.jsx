@@ -1,18 +1,75 @@
+import { useEffect, useState } from "react";
+import { doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, db } from "./firebase.js";
+import AuthScreen from "./components/AuthScreen.jsx";
+import DashboardPlaceholder from "./components/DashboardPlaceholder.jsx";
+import SplashScreen from "./components/SplashScreen.jsx";
+
+const THEME_KEY = "bantayBudgetTheme";
+
+function getInitialTheme() {
+  return localStorage.getItem(THEME_KEY) || "dark";
+}
+
 function App() {
+  const [theme, setTheme] = useState(getInitialTheme);
+  const [authReady, setAuthReady] = useState(false);
+  const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
+      if (!nextUser?.emailVerified) {
+        setUser(null);
+        setProfile(null);
+        setAuthReady(true);
+        return;
+      }
+
+      setUser(nextUser);
+
+      try {
+        const profileSnapshot = await getDoc(doc(db, "users", nextUser.uid));
+        setProfile(profileSnapshot.exists() ? profileSnapshot.data() : null);
+      } catch (error) {
+        console.error("Unable to load user profile:", error);
+        setProfile(null);
+      } finally {
+        setAuthReady(true);
+      }
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const toggleTheme = () => {
+    setTheme((currentTheme) =>
+      currentTheme === "dark" ? "light" : "dark",
+    );
+  };
+
+  if (!authReady) {
+    return <SplashScreen />;
+  }
+
+  if (!user) {
+    return <AuthScreen theme={theme} onToggleTheme={toggleTheme} />;
+  }
+
   return (
-    <main className="migration-screen">
-      <section className="migration-card" aria-labelledby="app-title">
-        <div className="brand-mark" aria-hidden="true">
-          BB
-        </div>
-        <p className="eyebrow">React migration</p>
-        <h1 id="app-title">Bantay Budget</h1>
-        <p className="status-copy">
-          The new application foundation is ready. Existing Firebase data and
-          production features remain unchanged while each screen is migrated.
-        </p>
-      </section>
-    </main>
+    <DashboardPlaceholder
+      user={user}
+      profile={profile}
+      theme={theme}
+      onToggleTheme={toggleTheme}
+      onSignOut={() => signOut(auth)}
+    />
   );
 }
 
