@@ -550,7 +550,7 @@ input:focus,
   .compact-theme-button,
   .notification-button { width: 44px; height: 44px; }
   .dashboard-heading-row { align-items: stretch; flex-direction: column; }
-  .month-filter { width: 100%; }
+  .month-filter { width: min(100%, 220px); align-self: flex-start; }
   .dashboard-controls { width: 100%; align-items: stretch; flex-direction: column; }
   .featured-summary,
   .compact-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
