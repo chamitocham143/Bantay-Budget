@@ -20,6 +20,10 @@ import AboutPage from "./AboutPage.jsx";
 import { exportBackup, readBackupFile, restoreBackup } from "../services/backup.js";
 import { APP_LOCK_KEY, useInactivityLock } from "../hooks/useInactivityLock.js";
 import AppLockScreen from "./AppLockScreen.jsx";
+import FinanceTip from "./FinanceTip.jsx";
+import { exportMonthlyCsv } from "../services/csvExport.js";
+import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
+import { sendTestPush } from "../services/developerTools.js";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -58,6 +62,10 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const [backupMessage, setBackupMessage] = useState(null);
   const [backupToRestore, setBackupToRestore] = useState(null);
   const [appLockEnabled, setAppLockEnabled] = useState(() => localStorage.getItem(APP_LOCK_KEY) === "true");
+  const [actionMessage, setActionMessage] = useState(null);
+  const [developerEnabled, setDeveloperEnabled] = useState(false);
+  const [testPushBusy, setTestPushBusy] = useState(false);
+  const [testPushMessage, setTestPushMessage] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
@@ -67,6 +75,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const notificationData = useNotifications(user.uid);
   const currentMonth = getLocalMonthString();
   const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
+  const { targetRef: pullTargetRef, pulling, refreshing } = usePullToRefresh();
 
   const saveInflow = async (values) => {
     setMutationError("");
@@ -304,8 +313,34 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     setAppLockEnabled(enabled);
   };
 
+  const handleCsvExport = () => {
+    setDrawerOpen(false);
+    setActionMessage(null);
+    try {
+      exportMonthlyCsv(selectedMonth || currentMonth, inflows, expenses);
+      setActionMessage({ type: "success", text: `CSV exported for ${selectedMonth || currentMonth}.` });
+    } catch (csvError) {
+      setActionMessage({ type: "error", text: csvError.message || "Unable to export CSV." });
+    }
+  };
+
+  const handleTestPush = async () => {
+    setTestPushBusy(true);
+    setTestPushMessage(null);
+    try {
+      await sendTestPush();
+      setTestPushMessage({ type: "success", text: "Test push notification sent." });
+    } catch (testError) {
+      console.error("Test push error:", testError);
+      setTestPushMessage({ type: "error", text: testError.message || "Unable to send a test push." });
+    } finally {
+      setTestPushBusy(false);
+    }
+  };
+
   return (
-    <main className="dashboard-shell">
+    <main className={`dashboard-shell ${pulling || refreshing ? "pulling" : ""}`} ref={pullTargetRef}>
+      <div className={`pull-refresh-indicator ${pulling || refreshing ? "active" : ""}`} aria-hidden={!pulling && !refreshing}><span>↻</span>{refreshing ? "Refreshing live data…" : "Release to refresh"}</div>
       <header className="dashboard-topbar">
         <div>
           <p className="eyebrow">Bantay Budget</p>
@@ -345,6 +380,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
         {error && <div className="form-message error dashboard-error" role="alert">{error}</div>}
         {mutationError && <div className="form-message error dashboard-error" role="alert">{mutationError}</div>}
         {recurringError && <div className="form-message error dashboard-error" role="alert">{recurringError}</div>}
+        {actionMessage && <div className={`form-message ${actionMessage.type} dashboard-error`} role="status">{actionMessage.text}</div>}
 
         {loading ? (
           <section className="dashboard-loading" aria-live="polite">
@@ -354,6 +390,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
         ) : (
           <>
             <SummaryDashboard totals={totals} />
+            <FinanceTip />
             <section className="data-status-grid">
               <article><strong>{inflows.length}</strong><span>Income records this month</span></article>
               <article><strong>{expenses.length}</strong><span>Expense records this month</span></article>
@@ -370,12 +407,12 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
       {recurringEditor && <RecurringTemplateModal template={recurringEditor.id ? recurringEditor : null} busy={mutationBusy} onClose={closeRecurringEditor} onSave={saveRecurringTemplate} />}
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
-      {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
+      {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
-      {aboutOpen && <AboutPage onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} />}
+      {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
       {appLocked && <AppLockScreen onUnlock={unlockApp} />}
     </main>
   );

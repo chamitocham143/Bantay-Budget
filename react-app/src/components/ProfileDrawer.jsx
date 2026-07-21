@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-function ProfileDrawer({ name, email, theme, unreadCount, onClose, onNotifications, onRecurring, onSettings, onToggleTheme, onLogout }) {
+function ProfileDrawer({ name, email, theme, unreadCount, onClose, onNotifications, onRecurring, onExportCsv, onSettings, onToggleTheme, onLogout }) {
   const drawerRef = useRef(null);
 
   useEffect(() => {
@@ -26,6 +26,7 @@ function ProfileDrawer({ name, email, theme, unreadCount, onClose, onNotificatio
         <nav className="drawer-menu" aria-label="Account menu">
           <button type="button" onClick={onNotifications}><span>🔔</span><div><strong>Notifications</strong><small>View recurring reminders</small></div>{unreadCount > 0 && <b>{unreadCount}</b>}</button>
           <button type="button" onClick={onRecurring}><span>↻</span><div><strong>Manage Recurring</strong><small>Edit, pause, or add templates</small></div><i>›</i></button>
+          <button type="button" onClick={onExportCsv}><span>📄</span><div><strong>Export CSV</strong><small>Download the selected month</small></div><i>↓</i></button>
           <button type="button" onClick={onSettings}><span>⚙️</span><div><strong>Settings</strong><small>Account and preferences</small></div><i>›</i></button>
           <button type="button" onClick={onToggleTheme}><span>{theme === "dark" ? "☀️" : "🌙"}</span><div><strong>{theme === "dark" ? "Light Mode" : "Dark Mode"}</strong><small>Change app appearance</small></div><i>›</i></button>
         </nav>

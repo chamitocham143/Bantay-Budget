@@ -19,14 +19,14 @@ production implementation.
 - Strict three-minute inactivity-only app lock
 - Installable PWA manifest, icons, offline shell, and Firebase Messaging worker
 - Firebase preview-channel configuration and optimized production chunks
-
-## Remaining parity review
-
-- CSV export from the selected month
+- CSV export for the selected month
 - Rotating daily finance-tip card
-- Pull-to-refresh animation (Firestore listeners already update data live)
-- Developer-mode test-push shortcut
-- Registration password visibility toggle
+- Pull-to-refresh push-down/spinner feedback over live Firestore data
+- Hidden developer-mode test-push shortcut
+- Password visibility controls for login and registration
+
+## Remaining acceptance testing
+
 - Device testing: iOS installed PWA, Android installed PWA, and desktop browsers
 - Preview-channel testing of offline startup, push opt-in/out, and app upgrades
 - Firestore mutation testing with a dedicated test account before production

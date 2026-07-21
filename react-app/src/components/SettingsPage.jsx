@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onNotifications, onRecurring, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
+function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -37,6 +37,7 @@ function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadC
             <button type="button" disabled={backupBusy} onClick={onExportBackup}><span>↑</span><strong>Export Backup</strong><small>Download JSON file</small></button>
             <label className={backupBusy ? "disabled" : ""}><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={(event) => { const file = event.target.files?.[0]; if (file) onRestoreFile(file); event.target.value = ""; }} /><span>↓</span><strong>Restore Backup</strong><small>Choose JSON file</small></label>
           </div>
+          <button className="csv-export-button" type="button" onClick={onExportCsv}>📄 Export selected month as CSV</button>
           <p className="backup-privacy">🛡️ Backup files stay on your device unless you choose to share them.</p>
         </section>
 

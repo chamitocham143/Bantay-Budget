@@ -29,6 +29,7 @@ function AuthScreen({ theme, onToggleTheme }) {
   const [password, setPassword] = useState("");
   const [registration, setRegistration] = useState(initialRegistration);
   const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [unverifiedUser, setUnverifiedUser] = useState(null);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -223,7 +224,10 @@ function AuthScreen({ theme, onToggleTheme }) {
             </label>
             <label>
               <span>Password</span>
-              <input name="password" type="password" value={registration.password} onChange={updateRegistration} autoComplete="new-password" />
+              <div className="password-field">
+                <input name="password" type={showRegisterPassword ? "text" : "password"} value={registration.password} onChange={updateRegistration} autoComplete="new-password" />
+                <button type="button" onClick={() => setShowRegisterPassword((shown) => !shown)}>{showRegisterPassword ? "Hide" : "Show"}</button>
+              </div>
             </label>
             <button className="primary-button" disabled={busy} type="submit">
               {busy ? "Creating account…" : "Create account"}

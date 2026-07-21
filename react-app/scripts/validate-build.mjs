@@ -37,4 +37,19 @@ const budgetSource = await readFile(resolve("src/hooks/useBudgetData.js"), "utf8
 if (!budgetSource.includes("inflowTotal - expenseTotals.paidTotal") || !budgetSource.includes("allocable - expenseTotals.pendingTotal")) {
   throw new Error("Financial calculation invariants are missing.");
 }
+
+const csvSource = await readFile(resolve("src/services/csvExport.js"), "utf8");
+if (!csvSource.includes("Budget Summary for ${month}.csv") || !csvSource.includes("replaceAll")) {
+  throw new Error("CSV export validation failed.");
+}
+
+const paritySources = await Promise.all([
+  readFile(resolve("src/components/FinanceTip.jsx"), "utf8"),
+  readFile(resolve("src/hooks/usePullToRefresh.js"), "utf8"),
+  readFile(resolve("src/services/developerTools.js"), "utf8"),
+  readFile(resolve("src/components/AuthScreen.jsx"), "utf8"),
+]);
+if (!paritySources[0].includes("financeTipDate") || !paritySources[1].includes("touchmove") || !paritySources[2].includes("sendTestPush") || !paritySources[3].includes("showRegisterPassword")) {
+  throw new Error("Legacy convenience-feature parity validation failed.");
+}
 console.log("React production build and PWA assets validated.");
