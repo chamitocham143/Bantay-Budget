@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function SettingsPage({ name, email, theme, pushEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onNotifications, onRecurring, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
+function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onNotifications, onRecurring, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -25,7 +25,9 @@ function SettingsPage({ name, email, theme, pushEnabled, unreadCount, backupBusy
           <button type="button" onClick={onToggleTheme}><span>{theme === "dark" ? "☀️" : "🌙"}</span><div><strong>Appearance</strong><small>Currently using {theme} mode</small></div><i>›</i></button>
           <button type="button" onClick={onNotifications}><span>🔔</span><div><strong>Notifications</strong><small>{pushEnabled ? "Push enabled on this device" : "Push disabled on this device"}</small></div>{unreadCount > 0 ? <b>{unreadCount}</b> : <i>›</i>}</button>
           <button type="button" onClick={onRecurring}><span>↻</span><div><strong>Recurring Expenses</strong><small>Manage monthly templates</small></div><i>›</i></button>
+          <div className="settings-toggle-row"><span>🔒</span><div><strong>App Lock</strong><small>Lock only after 3 minutes of inactivity</small></div><label className="switch-control"><input type="checkbox" checked={appLockEnabled} onChange={(event) => onToggleAppLock(event.target.checked)} /><span /></label></div>
         </section>
+        <p className="settings-note">Changing tabs, windows, or apps does not trigger an immediate lock. Only the inactivity timer controls it.</p>
 
         <div className="settings-section-label">Data Backup</div>
         <section className="backup-settings-card">

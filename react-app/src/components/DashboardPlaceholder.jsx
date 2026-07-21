@@ -18,6 +18,8 @@ import SettingsPage from "./SettingsPage.jsx";
 import FaqPage from "./FaqPage.jsx";
 import AboutPage from "./AboutPage.jsx";
 import { exportBackup, readBackupFile, restoreBackup } from "../services/backup.js";
+import { APP_LOCK_KEY, useInactivityLock } from "../hooks/useInactivityLock.js";
+import AppLockScreen from "./AppLockScreen.jsx";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -55,6 +57,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMessage, setBackupMessage] = useState(null);
   const [backupToRestore, setBackupToRestore] = useState(null);
+  const [appLockEnabled, setAppLockEnabled] = useState(() => localStorage.getItem(APP_LOCK_KEY) === "true");
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
@@ -63,6 +66,7 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const { templates, loading: recurringLoading, error: recurringError } = useRecurringExpenses(user.uid);
   const notificationData = useNotifications(user.uid);
   const currentMonth = getLocalMonthString();
+  const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
 
   const saveInflow = async (values) => {
     setMutationError("");
@@ -295,6 +299,10 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
 
   const openFaq = () => { setSettingsOpen(false); setAboutOpen(false); setFaqOpen(true); };
   const openAbout = () => { setSettingsOpen(false); setFaqOpen(false); setAboutOpen(true); };
+  const toggleAppLock = (enabled) => {
+    localStorage.setItem(APP_LOCK_KEY, String(enabled));
+    setAppLockEnabled(enabled);
+  };
 
   return (
     <main className="dashboard-shell">
@@ -363,11 +371,12 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
       {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
       {aboutOpen && <AboutPage onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} />}
+      {appLocked && <AppLockScreen onUnlock={unlockApp} />}
     </main>
   );
 }
