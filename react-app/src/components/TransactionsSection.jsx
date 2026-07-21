@@ -39,7 +39,7 @@ function formatRecurringDueDate(expense) {
     : `Day ${expense.recurringDay || "—"}`;
 }
 
-function InflowCard({ inflow }) {
+function InflowCard({ inflow, onEdit, onDelete }) {
   return (
     <article className="transaction-card inflow-card">
       <div className="transaction-icon" aria-hidden="true">💰</div>
@@ -50,6 +50,10 @@ function InflowCard({ inflow }) {
       <div className="transaction-value">
         <strong>+{formatCurrency(inflow.amount)}</strong>
         <span className="status-badge income">Income</span>
+      </div>
+      <div className="transaction-actions">
+        <button type="button" onClick={() => onEdit(inflow)} aria-label={`Edit ${inflow.desc || "inflow"}`}>✎</button>
+        <button type="button" onClick={() => onDelete(inflow)} aria-label={`Delete ${inflow.desc || "inflow"}`}>⌫</button>
       </div>
     </article>
   );
@@ -97,7 +101,7 @@ function EmptyState({ view }) {
   );
 }
 
-function TransactionsSection({ inflows, expenses }) {
+function TransactionsSection({ inflows, expenses, onEditInflow, onDeleteInflow }) {
   const [view, setView] = useState("ALL");
 
   const displayedInflows = view === "ALL" || view === "INFLOWS" ? inflows : [];
@@ -155,7 +159,7 @@ function TransactionsSection({ inflows, expenses }) {
                 <span>{displayedInflows.length}</span>
               </div>
               <div className="transaction-list">
-                {displayedInflows.map((inflow) => <InflowCard inflow={inflow} key={inflow.id} />)}
+                {displayedInflows.map((inflow) => <InflowCard inflow={inflow} key={inflow.id} onEdit={onEditInflow} onDelete={onDeleteInflow} />)}
               </div>
             </section>
           )}
