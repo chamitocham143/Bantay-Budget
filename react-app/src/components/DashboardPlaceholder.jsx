@@ -15,6 +15,9 @@ import NotificationsPage from "./NotificationsPage.jsx";
 import { disablePushNotifications, enablePushNotifications, PUSH_ENABLED_KEY } from "../services/pushNotifications.js";
 import ProfileDrawer from "./ProfileDrawer.jsx";
 import SettingsPage from "./SettingsPage.jsx";
+import FaqPage from "./FaqPage.jsx";
+import AboutPage from "./AboutPage.jsx";
+import { exportBackup, readBackupFile, restoreBackup } from "../services/backup.js";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -47,6 +50,11 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [faqOpen, setFaqOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [backupMessage, setBackupMessage] = useState(null);
+  const [backupToRestore, setBackupToRestore] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
@@ -243,6 +251,51 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     try { await onSignOut(); } finally { setLogoutBusy(false); }
   };
 
+  const handleExportBackup = async () => {
+    setBackupBusy(true);
+    setBackupMessage(null);
+    try {
+      await exportBackup(user.uid);
+      setBackupMessage({ type: "success", text: "Backup exported successfully." });
+    } catch (backupError) {
+      console.error("Backup export error:", backupError);
+      setBackupMessage({ type: "error", text: "Unable to export your backup. Please try again." });
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const handleRestoreFile = async (file) => {
+    setBackupMessage(null);
+    try {
+      const backup = await readBackupFile(file);
+      setBackupToRestore({ fileName: file.name, backup });
+    } catch (backupError) {
+      console.error("Backup validation error:", backupError);
+      setBackupMessage({ type: "error", text: backupError.message || "Invalid backup file." });
+    }
+  };
+
+  const confirmRestoreBackup = async () => {
+    if (!backupToRestore) return;
+    setBackupBusy(true);
+    setBackupMessage(null);
+    try {
+      await restoreBackup(user.uid, backupToRestore.backup);
+      setBackupMessage({ type: "success", text: "Backup restored successfully." });
+      setBackupToRestore(null);
+    } catch (backupError) {
+      console.error("Backup restore error:", backupError);
+      setBackupMessage({ type: "error", text: "Unable to restore the backup. Your latest Firestore state will remain visible." });
+      setBackupToRestore(null);
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const openFaq = () => { setSettingsOpen(false); setAboutOpen(false); setFaqOpen(true); };
+  const openAbout = () => { setSettingsOpen(false); setFaqOpen(false); setAboutOpen(true); };
+
   return (
     <main className="dashboard-shell">
       <header className="dashboard-topbar">
@@ -310,8 +363,11 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
       {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} unreadCount={notificationData.unreadCount} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onNotifications={openNotifications} onRecurring={openRecurringManager} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
+      {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
+      {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
+      {aboutOpen && <AboutPage onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} />}
     </main>
   );
 }
