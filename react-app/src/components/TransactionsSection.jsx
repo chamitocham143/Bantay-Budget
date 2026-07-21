@@ -59,7 +59,7 @@ function InflowCard({ inflow, onEdit, onDelete }) {
   );
 }
 
-function ExpenseCard({ expense, statusBusy, onStatusChange, onEdit, onDelete }) {
+function ExpenseCard({ expense, statusBusy, canManageRecurring, onStatusChange, onEdit, onDelete, onEditGenerated, onDeleteGenerated }) {
   const status = statusDetails[expense.status] || statusDetails["ON HOLD"];
 
   return (
@@ -89,10 +89,10 @@ function ExpenseCard({ expense, statusBusy, onStatusChange, onEdit, onDelete }) 
           <option value="PAID">Paid</option>
         </select>
       </div>
-      {!expense.recurring && (
+      {(!expense.recurring || canManageRecurring) && (
         <div className="transaction-actions">
-          <button type="button" onClick={() => onEdit(expense)} aria-label={`Edit ${expense.desc || "expense"}`}>✎</button>
-          <button type="button" onClick={() => onDelete(expense)} aria-label={`Delete ${expense.desc || "expense"}`}>⌫</button>
+          <button type="button" onClick={() => expense.recurring ? onEditGenerated(expense) : onEdit(expense)} aria-label={`Edit ${expense.desc || "expense"}`}>✎</button>
+          <button type="button" onClick={() => expense.recurring ? onDeleteGenerated(expense) : onDelete(expense)} aria-label={`Delete ${expense.desc || "expense"}`}>⌫</button>
         </div>
       )}
     </article>
@@ -117,7 +117,7 @@ function EmptyState({ view }) {
   );
 }
 
-function TransactionsSection({ inflows, expenses, onEditInflow, onDeleteInflow, onEditExpense, onDeleteExpense, onExpenseStatusChange, statusBusy }) {
+function TransactionsSection({ inflows, expenses, selectedMonth, currentMonth, onEditInflow, onDeleteInflow, onEditExpense, onDeleteExpense, onEditGeneratedExpense, onDeleteGeneratedExpense, onExpenseStatusChange, statusBusy }) {
   const [view, setView] = useState("ALL");
 
   const displayedInflows = view === "ALL" || view === "INFLOWS" ? inflows : [];
@@ -187,7 +187,7 @@ function TransactionsSection({ inflows, expenses, onEditInflow, onDeleteInflow, 
                 <span>{displayedExpenses.length}</span>
               </div>
               <div className="transaction-list">
-                {displayedExpenses.map((expense) => <ExpenseCard expense={expense} key={expense.id} statusBusy={statusBusy} onStatusChange={onExpenseStatusChange} onEdit={onEditExpense} onDelete={onDeleteExpense} />)}
+                {displayedExpenses.map((expense) => <ExpenseCard expense={expense} key={expense.id} statusBusy={statusBusy} canManageRecurring={selectedMonth === currentMonth} onStatusChange={onExpenseStatusChange} onEdit={onEditExpense} onDelete={onDeleteExpense} onEditGenerated={onEditGeneratedExpense} onDeleteGenerated={onDeleteGeneratedExpense} />)}
               </div>
             </section>
           )}

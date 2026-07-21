@@ -235,6 +235,7 @@ input:focus,
 .dashboard-controls { display: flex; align-items: end; gap: 10px; }
 .add-inflow-button { min-height: 44px; padding: 10px 16px; white-space: nowrap; border: 0; border-radius: 14px; color: white; background: var(--primary); font-weight: 800; }
 .add-expense-button { min-height: 44px; padding: 10px 16px; white-space: nowrap; border: 0; border-radius: 14px; color: white; background: #9f1917; font-weight: 800; }
+.manage-recurring-button { min-height: 44px; padding: 10px 14px; white-space: nowrap; border: 1px solid var(--border); border-radius: 14px; color: var(--text); background: var(--surface); font-weight: 800; }
 
 .summary-grid { display: grid; gap: 12px; }
 .featured-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
@@ -342,6 +343,24 @@ input:focus,
 .confirm-content { padding-top: 22px; text-align: center; }
 .confirm-content p { margin: 15px auto 0; color: var(--muted); line-height: 1.6; }
 .confirm-icon { width: 58px; height: 58px; margin: 0 auto; display: grid; place-items: center; border-radius: 50%; color: #dc2626; background: rgb(239 68 68 / 12%); font-size: 28px; font-weight: 900; }
+.field-help { margin: 9px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+
+.recurring-manager-toolbar { margin-top: 18px; }
+.recurring-manager-toolbar p { margin: 0 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+.manager-loading { padding: 42px 0; text-align: center; color: var(--muted); }
+.transaction-empty.compact { padding: 32px 18px; }
+.recurring-template-list { margin-top: 18px; display: grid; gap: 9px; }
+.recurring-template-card { padding: 15px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid var(--border); border-radius: 17px; background: var(--input); }
+.recurring-template-card h3 { margin: 0; font-size: 14px; }
+.recurring-template-card p { margin: 5px 0 8px; color: var(--muted); font-size: 11px; }
+.template-state { font-size: 10px; font-weight: 850; }
+.template-state.active { color: #059669; }
+.template-state.paused { color: #d97706; }
+:root[data-theme="dark"] .template-state.active { color: #6ee7b7; }
+:root[data-theme="dark"] .template-state.paused { color: #fcd34d; }
+.template-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 5px; }
+.template-actions button { min-height: 31px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: var(--surface-solid); font-size: 10px; font-weight: 800; }
+.template-actions .template-delete { color: var(--danger); }
 
 @keyframes pulse { 50% { transform: scale(1.06); box-shadow: 0 18px 44px rgb(0 83 70 / 52%); } }
 @keyframes bounce { 0%, 80%, 100% { transform: scale(0.65); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
@@ -370,6 +389,8 @@ input:focus,
   .transaction-info h3 { max-width: 135px; font-size: 13px; }
   .transaction-value strong { font-size: 13px; }
   .react-modal { padding: 20px; border-radius: 22px; }
+  .recurring-template-card { align-items: stretch; flex-direction: column; }
+  .template-actions { justify-content: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
