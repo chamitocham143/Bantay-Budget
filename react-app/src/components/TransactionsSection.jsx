@@ -39,6 +39,89 @@ function formatRecurringDueDate(expense) {
     : `Day ${expense.recurringDay || "—"}`;
 }
 
+
+function getTransactionDate(transaction) {
+  return transaction.dueDate || transaction.date || "";
+}
+
+function getDateGroupLabel(dateString) {
+  const date = parseLocalDate(dateString);
+
+  if (!date) return "Date unavailable";
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+
+  const transactionDate = new Date(date);
+  transactionDate.setHours(0, 0, 0, 0);
+
+  if (transactionDate.getTime() === today.getTime()) {
+    return `Today • ${formatDate(dateString)}`;
+  }
+
+  if (transactionDate.getTime() === yesterday.getTime()) {
+    return `Yesterday • ${formatDate(dateString)}`;
+  }
+
+  return formatDate(dateString);
+}
+
+function getTransactionIcon(transaction) {
+  if (transaction.type === "INFLOW") return "💰";
+  if (transaction.recurring) return "↻";
+
+  const text = String(transaction.desc || "").toLowerCase();
+
+  if (
+    text.includes("gas") ||
+    text.includes("fuel") ||
+    text.includes("shell") ||
+    text.includes("chevron")
+  ) {
+    return "⛽";
+  }
+
+  if (
+    text.includes("rent") ||
+    text.includes("mortgage") ||
+    text.includes("house")
+  ) {
+    return "🏠";
+  }
+
+  if (
+    text.includes("food") ||
+    text.includes("restaurant") ||
+    text.includes("grocery") ||
+    text.includes("costco")
+  ) {
+    return "🛒";
+  }
+
+  if (
+    text.includes("phone") ||
+    text.includes("verizon") ||
+    text.includes("internet") ||
+    text.includes("electric")
+  ) {
+    return "📱";
+  }
+
+  if (
+    text.includes("netflix") ||
+    text.includes("spotify") ||
+    text.includes("movie")
+  ) {
+    return "🎬";
+  }
+
+  return "🧾";
+}
+
+
 function InflowCard({ inflow, onEdit, onDelete }) {
   return (
     <article className="transaction-card inflow-card">
@@ -119,81 +202,269 @@ function EmptyState({ view }) {
 
 function TransactionsSection({ inflows, expenses, selectedMonth, currentMonth, onEditInflow, onDeleteInflow, onEditExpense, onDeleteExpense, onEditGeneratedExpense, onDeleteGeneratedExpense, onExpenseStatusChange, statusBusy }) {
   const [view, setView] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  const displayedInflows = view === "ALL" || view === "INFLOWS" ? inflows : [];
-  const displayedExpenses = useMemo(() => {
-    if (view === "INFLOWS") return [];
-    if (view === "EXPENSES") return expenses.filter((item) => !item.recurring);
-    if (view === "RECURRING") {
-      return expenses
-        .filter((item) => item.recurring)
-        .sort(
-          (a, b) =>
-            String(b.dueDate || b.date || "").localeCompare(
-              String(a.dueDate || a.date || ""),
-            ),
-        );
+ const normalizedSearch = searchTerm.trim().toLowerCase();
+
+const displayedInflows =
+  view === "ALL" || view === "INFLOWS"
+    ? inflows.filter((item) =>
+        String(item.desc || "").toLowerCase().includes(normalizedSearch),
+      )
+    : [];
+
+const displayedExpenses = useMemo(() => {
+  let result = expenses;
+  if (view === "INFLOWS") return [];
+  if (view === "EXPENSES") {
+    result = result.filter((item) => !item.recurring);
+  }
+  if (view === "RECURRING") {
+    result = result.filter((item) => item.recurring);
+  }
+  if (normalizedSearch) {
+    result = result.filter((item) =>
+      String(item.desc || "").toLowerCase().includes(normalizedSearch),
+    );
+  }
+  return result;
+}, [expenses, normalizedSearch, view]);
+
+const timelineTransactions = useMemo(() => {
+  const combined = [
+    ...displayedInflows.map((item) => ({
+      ...item,
+      type: "INFLOW",
+    })),
+    ...displayedExpenses.map((item) => ({
+      ...item,
+      type: "EXPENSE",
+    })),
+  ];
+
+  return combined.sort((a, b) =>
+    String(getTransactionDate(b)).localeCompare(
+      String(getTransactionDate(a)),
+    ),
+  );
+}, [displayedInflows, displayedExpenses]);
+
+const groupedTransactions = useMemo(() => {
+  return timelineTransactions.reduce((groups, transaction) => {
+    const date = getTransactionDate(transaction);
+    const key = date || "unknown";
+
+    if (!groups[key]) {
+      groups[key] = [];
     }
-    return expenses;
-  }, [expenses, view]);
 
-  const isEmpty = displayedInflows.length === 0 && displayedExpenses.length === 0;
+    groups[key].push(transaction);
+    return groups;
+  }, {});
+}, [timelineTransactions]);
+
+
+  const isEmpty = timelineTransactions.length === 0;
 
   return (
-    <section className="transactions-section" aria-labelledby="transactions-title">
-      <div className="transactions-heading">
-        <div>
-          <p className="eyebrow">Monthly activity</p>
-          <h2 id="transactions-title">Income and expenses</h2>
-        </div>
-        <span>{displayedInflows.length + displayedExpenses.length} records</span>
-      </div>
+    <section
+  className="transactions-section premium-transactions"
+  aria-labelledby="transactions-title"
+>
+  <div className="transactions-heading">
+    <div>
+      <p className="eyebrow">Transactions</p>
+      <h2 id="transactions-title">Income and expenses</h2>
+    </div>
 
-      <div className="view-tabs" role="tablist" aria-label="Transaction view">
-        {views.map((item) => (
-          <button
-            key={item.id}
-            className={view === item.id ? "active" : ""}
-            type="button"
-            role="tab"
-            aria-selected={view === item.id}
-            onClick={() => setView(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+    <span className="records-count">
+      {timelineTransactions.length} records
+    </span>
+  </div>
 
-      {isEmpty ? (
-        <EmptyState view={view} />
-      ) : (
-        <div className="transaction-groups">
-          {displayedInflows.length > 0 && (
-            <section className="transaction-group" aria-labelledby="inflows-title">
-              <div className="group-heading">
-                <h3 id="inflows-title">Inflows</h3>
-                <span>{displayedInflows.length}</span>
-              </div>
-              <div className="transaction-list">
-                {displayedInflows.map((inflow) => <InflowCard inflow={inflow} key={inflow.id} onEdit={onEditInflow} onDelete={onDeleteInflow} />)}
-              </div>
-            </section>
-          )}
+  <div className="transactions-search">
+    <span className="search-icon" aria-hidden="true">
+  🔍
+</span>
 
-          {displayedExpenses.length > 0 && (
-            <section className="transaction-group" aria-labelledby="expenses-title">
-              <div className="group-heading">
-                <h3 id="expenses-title">{view === "RECURRING" ? "Recurring expenses" : "Expenses"}</h3>
-                <span>{displayedExpenses.length}</span>
-              </div>
-              <div className="transaction-list">
-                {displayedExpenses.map((expense) => <ExpenseCard expense={expense} key={expense.id} statusBusy={statusBusy} canManageRecurring={selectedMonth === currentMonth} onStatusChange={onExpenseStatusChange} onEdit={onEditExpense} onDelete={onDeleteExpense} onEditGenerated={onEditGeneratedExpense} onDeleteGenerated={onDeleteGeneratedExpense} />)}
-              </div>
-            </section>
-          )}
-        </div>
+    <input
+      type="search"
+      value={searchTerm}
+      onChange={(event) => setSearchTerm(event.target.value)}
+      placeholder="Search transactions..."
+      aria-label="Search transactions"
+    />
+
+    {searchTerm && (
+      <button
+        type="button"
+        onClick={() => setSearchTerm("")}
+        aria-label="Clear transaction search"
+      >
+        ×
+      </button>
+    )}
+  </div>
+
+  <div className="view-tabs premium-view-tabs" role="tablist">
+    {views.map((item) => (
+      <button
+        key={item.id}
+        className={view === item.id ? "active" : ""}
+        type="button"
+        role="tab"
+        aria-selected={view === item.id}
+        onClick={() => setView(item.id)}
+      >
+        <span aria-hidden="true">
+          {item.id === "ALL" && "▦"}
+          {item.id === "INFLOWS" && "↓"}
+          {item.id === "EXPENSES" && "↑"}
+          {item.id === "RECURRING" && "↻"}
+        </span>
+
+        {item.label}
+      </button>
+    ))}
+  </div>
+
+  {isEmpty ? (
+    <EmptyState view={view} />
+  ) : (
+    <div className="transaction-timeline">
+      {Object.entries(groupedTransactions).map(
+        ([date, transactions]) => (
+          <section className="timeline-group" key={date}>
+            <div className="timeline-heading">
+              <h3>{getDateGroupLabel(date)}</h3>
+              <span>{transactions.length}</span>
+            </div>
+
+            <div className="timeline-card">
+              {transactions.map((transaction) => {
+                const isInflow = transaction.type === "INFLOW";
+                const status = isInflow
+                  ? null
+                  : statusDetails[transaction.status] ||
+                    statusDetails["ON HOLD"];
+
+                return (
+                  <article
+                    className={`timeline-row ${
+                      isInflow ? "timeline-inflow" : "timeline-expense"
+                    }`}
+                    key={`${transaction.type}-${transaction.id}`}
+                  >
+                    <div
+                      className={`timeline-icon ${
+                        isInflow
+                          ? "income"
+                          : transaction.recurring
+                            ? "recurring"
+                            : status.className
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {getTransactionIcon(transaction)}
+                    </div>
+
+                    <div className="timeline-info">
+                      <h4>{transaction.desc || transaction.type}</h4>
+
+                      {isInflow ? (
+                        <span className="timeline-status income">
+                          Income
+                        </span>
+                      ) : (
+                        <select
+                          className={`timeline-status-select ${status.className}`}
+                          value={transaction.status || "ON HOLD"}
+                          disabled={statusBusy === transaction.id}
+                          onChange={(event) =>
+                            onExpenseStatusChange(
+                              transaction,
+                              event.target.value,
+                            )
+                          }
+                          aria-label={`Status for ${
+                            transaction.desc || "expense"
+                          }`}
+                        >
+                          <option value="ON HOLD">On Hold</option>
+                          <option value="PENDING">Pending</option>
+                          <option value="PAID">Paid</option>
+                        </select>
+                      )}
+
+                      {transaction.recurring && (
+                        <span className="timeline-due">
+                          Due {formatRecurringDueDate(transaction)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="timeline-value">
+                      <strong
+                        className={
+                          isInflow
+                            ? "timeline-amount income"
+                            : "timeline-amount expense"
+                        }
+                      >
+                        {isInflow ? "+" : "-"}
+                        {formatCurrency(transaction.amount)}
+                      </strong>
+
+                      <div className="timeline-actions">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isInflow) {
+                              onEditInflow(transaction);
+                              return;
+                            }
+
+                            transaction.recurring
+                              ? onEditGeneratedExpense(transaction)
+                              : onEditExpense(transaction);
+                          }}
+                          aria-label={`Edit ${
+                            transaction.desc || "transaction"
+                          }`}
+                        >
+                          ✎
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isInflow) {
+                              onDeleteInflow(transaction);
+                              return;
+                            }
+
+                            transaction.recurring
+                              ? onDeleteGeneratedExpense(transaction)
+                              : onDeleteExpense(transaction);
+                          }}
+                          aria-label={`Delete ${
+                            transaction.desc || "transaction"
+                          }`}
+                        >
+                          ⌫
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ),
       )}
-    </section>
+    </div>
+  )}
+</section>
   );
 }
 

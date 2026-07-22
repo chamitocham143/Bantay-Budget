@@ -24,6 +24,8 @@ import FinanceTip from "./FinanceTip.jsx";
 import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
 import { sendTestPush } from "../services/developerTools.js";
+import BottomActionBar from "./BottomActionBar";
+import { useMemo } from "react";
 
 const MONTH_OPTIONS = [
   "January", "February", "March", "April", "May", "June",
@@ -40,6 +42,16 @@ function getGreeting() {
   if (hour < 18) return "🌥️ Maayong Hapon";
   if (hour < 22) return "🌙 Maayong Gabi-i";
   return "✨ Good Night";
+}
+
+function getPreviousMonth(monthValue) {
+  const [year, month] = monthValue.split("-").map(Number);
+
+  const date = new Date(year, month - 2, 1);
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1
+  ).padStart(2, "0")}`;
 }
 
 function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }) {
@@ -78,12 +90,20 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     user.uid,
     selectedMonth,
   );
+
+  const previousMonth = getPreviousMonth(selectedMonth);
+  const {
+    totals: previousTotals,
+    loading: previousMonthLoading,
+  } = useBudgetData(user.uid, previousMonth);
+
   const { templates, loading: recurringLoading, error: recurringError } = useRecurringExpenses(user.uid);
   const notificationData = useNotifications(user.uid);
   const currentMonth = getLocalMonthString();
   const [selectedYear, selectedMonthNumber] = selectedMonth.split("-");
   const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
   const { targetRef: pullTargetRef, pulling, refreshing } = usePullToRefresh();
+  const [monthPickerOpen, setMonthPickerOpen] = useState(false);
 
   const saveInflow = async (values) => {
     setMutationError("");
@@ -346,14 +366,288 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     }
   };
 
+  const formatFilterMonth = (monthValue) => {
+  const [year, month] = monthValue.split("-");
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(new Date(Number(year), Number(month) - 1, 1));
+};
+
+const formatCurrency = (amount = 0) =>
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(Number(amount) || 0);
+
+// Getting Previous Month Value //
+
+
+const getBalanceTrend = () => {
+  const current = Number(totals?.available || 0);
+  const previous = Number(previousTotals?.available || 0);
+
+  const previousHasData =
+    Number(previousTotals?.inflowTotal || 0) !== 0 ||
+    Number(previousTotals?.paidTotal || 0) !== 0 ||
+    Number(previousTotals?.pendingTotal || 0) !== 0 ||
+    Number(previousTotals?.onHoldTotal || 0) !== 0;
+
+  if (previousMonthLoading) {
+    return {
+      direction: "neutral",
+      percentage: null,
+      difference: 0,
+      label: "Loading trend",
+    };
+  }
+
+  if (!previousHasData) {
+    return {
+      direction: "neutral",
+      percentage: null,
+      difference: current,
+      label: "No previous data",
+    };
+  }
+
+  const difference = current - previous;
+
+  if (previous === 0) {
+    return {
+      direction:
+        difference > 0
+          ? "up"
+          : difference < 0
+          ? "down"
+          : "neutral",
+      percentage: null,
+      difference,
+      label: "vs last month",
+    };
+  }
+
+  const percentage = Math.round(
+    (Math.abs(difference) / Math.abs(previous)) * 100
+  );
+
+  return {
+    direction:
+      difference > 0
+        ? "up"
+        : difference < 0
+        ? "down"
+        : "neutral",
+    percentage,
+    difference,
+    label: "vs last month",
+  };
+};
+
+const balanceTrend = getBalanceTrend();
+
+//*********************************************** */
+
+const getBalanceMessage = () => {
+  const available = Number(totals?.available || 0);
+  const pending = Number(totals?.pendingTotal || 0);
+  const onHold = Number(totals?.onHoldTotal || 0);
+
+  if (available < 0) {
+    return "Your expenses are currently above your available balance.";
+  }
+
+  if (available === 0) {
+    return "Your available balance is fully allocated this month.";
+  }
+
+  if (pending > available) {
+    return "You have upcoming payments that need your attention.";
+  }
+
+  if (onHold > 0) {
+    return `${formatCurrency(onHold)} is currently on hold.`;
+  }
+
+  return "You're doing great this month.";
+};
+
+const getFinancialHealth = () => {
+  const income = Number(totals?.inflowTotal || 0);
+  const paid = Number(totals?.paidTotal || 0);
+  const pending = Number(totals?.pendingTotal || 0);
+  const onHold = Number(totals?.onHoldTotal || 0);
+  const available = Number(totals?.available || 0);
+
+  if (income <= 0) {
+    return {
+      score: 0,
+      status: "Getting Started",
+      tone: "info",
+      insights: [
+        {
+          type: "info",
+          icon: "fa-solid fa-wallet",
+          text: "Add your monthly income to calculate your financial health.",
+        },
+      ],
+    };
+  }
+
+  const availablePercentage = Math.round((available / income) * 100);
+  const paidPercentage = Math.round((paid / income) * 100);
+  const pendingPercentage = Math.round((pending / income) * 100);
+
+  let score = 100;
+
+  if (available < 0) {
+    score -= 50;
+  } else if (availablePercentage < 10) {
+    score -= 30;
+  } else if (availablePercentage < 25) {
+    score -= 15;
+  }
+
+  if (pending > available) {
+    score -= 25;
+  }
+
+  if (paidPercentage > 80) {
+    score -= 15;
+  } else if (paidPercentage > 65) {
+    score -= 8;
+  }
+
+  if (onHold > 0) {
+    score -= 5;
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  let status = "Excellent";
+  let tone = "success";
+
+  if (score < 40) {
+    status = "Needs Attention";
+    tone = "danger";
+  } else if (score < 65) {
+    status = "Fair";
+    tone = "warning";
+  } else if (score < 85) {
+    status = "Good";
+    tone = "success";
+  }
+
+  const insights = [];
+
+  if (available < 0) {
+    insights.push({
+      type: "danger",
+      icon: "fa-solid fa-triangle-exclamation",
+      text: `Your budget is over by ${formatCurrency(
+        Math.abs(available)
+      )}.`,
+    });
+  } else {
+    insights.push({
+      type: availablePercentage >= 25 ? "success" : "warning",
+      icon: "fa-solid fa-wallet",
+      text: `${Math.max(
+        availablePercentage,
+        0
+      )}% of your income is still available.`,
+    });
+  }
+
+  if (pending <= 0) {
+    insights.push({
+      type: "success",
+      icon: "fa-solid fa-calendar-check",
+      text: "You currently have no pending payments.",
+    });
+  } else if (available >= pending) {
+    insights.push({
+      type: "success",
+      icon: "fa-solid fa-shield-halved",
+      text: "Your available balance can cover all pending payments.",
+    });
+  } else {
+    insights.push({
+      type: "warning",
+      icon: "fa-solid fa-clock",
+      text: `${formatCurrency(
+        pending - Math.max(available, 0)
+      )} more may be needed for pending payments.`,
+    });
+  }
+
+  if (paidPercentage > 70) {
+    insights.push({
+      type: "warning",
+      icon: "fa-solid fa-chart-pie",
+      text: `${paidPercentage}% of your income has already been spent.`,
+    });
+  } else {
+    insights.push({
+      type: "success",
+      icon: "fa-solid fa-chart-line",
+      text: "Your paid expenses remain within a healthy range.",
+    });
+  }
+
+  if (onHold > 0 && insights.length < 3) {
+    insights.push({
+      type: "info",
+      icon: "fa-solid fa-pause",
+      text: `${formatCurrency(onHold)} is currently on hold.`,
+    });
+  }
+
+  return {
+    score,
+    status,
+    tone,
+    insights: insights.slice(0, 3),
+  };
+};
+
+const financialHealth = getFinancialHealth();
+
+const getMonthOptions = () => {
+  const options = [];
+  const current = new Date();
+  const currentYear = current.getFullYear();
+  const currentMonthIndex = current.getMonth();
+
+  for (let index = 0; index < 24; index += 1) {
+    const date = new Date(currentYear, currentMonthIndex - index, 1);
+
+    const value = `${date.getFullYear()}-${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}`;
+
+    options.push({
+      value,
+      label: new Intl.DateTimeFormat("en-US", {
+        month: "long",
+        year: "numeric",
+      }).format(date),
+    });
+  }
+
+  return options;
+};
+
+const monthOptions = getMonthOptions();
+
   return (
     <main className={`dashboard-shell ${pulling || refreshing ? "pulling" : ""}`} ref={pullTargetRef}>
       <div className={`pull-refresh-indicator ${pulling || refreshing ? "active" : ""}`} aria-hidden={!pulling && !refreshing}><span>↻</span>{refreshing ? "Refreshing live data…" : "Release to refresh"}</div>
       <header className="dashboard-topbar">
         <div>
-          <p className="eyebrow">Bantay Budget</p>
-          <h1>{getGreeting()}, {name} 👋</h1>
-        </div>
+        <p className="eyebrow">Bantay Budget</p>
+      </div>
         <div className="topbar-actions">
           <button className="notification-button" type="button" onClick={() => setNotificationsOpen(true)} aria-label={`${notificationData.unreadCount} unread notifications`}>
             🔔
@@ -368,39 +662,138 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
         </div>
       </header>
 
-      <section className="dashboard-content">
-        <div className="dashboard-heading-row">
-          <div>
-            <p className="eyebrow">Financial overview</p>
-            <h2>Your monthly budget</h2>
-          </div>
-          <div className="dashboard-controls">
-            <label className="month-filter">
-              <span>Month</span>
-              <span className="month-picker">
-                <select
-                  aria-label="Month"
-                  value={selectedMonthNumber}
-                  onChange={(event) => setSelectedMonth(`${selectedYear}-${event.target.value}`)}
-                >
-                  {MONTH_OPTIONS.map((month, index) => (
-                    <option value={String(index + 1).padStart(2, "0")} key={month}>{month}</option>
-                  ))}
-                </select>
-                <select
-                  aria-label="Year"
-                  value={selectedYear}
-                  onChange={(event) => setSelectedMonth(`${event.target.value}-${selectedMonthNumber}`)}
-                >
-                  {YEAR_OPTIONS.map((year) => <option value={year} key={year}>{year}</option>)}
-                </select>
-              </span>
-            </label>
-            <button className="add-inflow-button" type="button" onClick={() => setInflowModal({})}>+ Add Inflow</button>
-            <button className="add-expense-button" type="button" onClick={() => setExpenseModal({})}>+ Add Expense</button>
-            <button className="manage-recurring-button" type="button" onClick={() => setRecurringManagerOpen(true)}>↻ Recurring</button>
-          </div>
+            <section className="balance-hero">
+        <div className="balance-hero-glow" aria-hidden="true" />
+
+        <div className="balance-hero-content">
+          <p className="balance-hero-greeting">
+            {getGreeting()}, {name} 👋
+          </p>
+
+          <h1 className="balance-hero-amount">
+            {formatCurrency(totals?.available)}
+          </h1>
+
+          <p className="balance-hero-label">
+            Available Balance
+          </p>
+
+          <p className="balance-hero-message">
+            {getBalanceMessage()}
+          </p>
         </div>
+
+        <div className={`balance-trend-card ${balanceTrend.direction}`}>
+  <div className="balance-trend-value">
+    <span className="balance-trend-arrow">
+      {balanceTrend.direction === "up" && "↗"}
+      {balanceTrend.direction === "down" && "↘"}
+      {balanceTrend.direction === "neutral" && "→"}
+    </span>
+
+    <strong>
+      {balanceTrend.percentage === null
+        ? "—"
+        : `${balanceTrend.percentage}%`}
+    </strong>
+  </div>
+
+  <span className="balance-trend-label">
+    {balanceTrend.label}
+  </span>
+</div>
+
+      </section>
+
+      <div className="financial-health-grid">
+
+  <div className="financial-score-card">
+
+    <div
+      className="financial-health-score"
+      style={{
+        "--health-score": `${financialHealth.score * 3.6}deg`,
+      }}
+    >
+      <div className="financial-health-score-inner">
+        <strong>{financialHealth.score}</strong>
+      </div>
+    </div>
+
+    <p className="financial-score-label">
+      Financial Score
+    </p>
+
+    <h3 className={`financial-score-title ${financialHealth.tone}`}>
+      {financialHealth.status}
+    </h3>
+
+  </div>
+
+  <div className="financial-summary-card">
+
+    <h3>Health Summary</h3>
+
+    <div className="financial-insights-list">
+
+      {financialHealth.insights.map((insight, index) => (
+
+        <div
+          className={`financial-insight-item ${insight.type}`}
+          key={index}
+        >
+          <span className="financial-insight-status">
+            <i className={insight.icon}></i>
+          </span>
+
+          <p>{insight.text}</p>
+
+        </div>
+
+      ))}
+
+    </div>
+
+  </div>
+
+</div>
+
+      <section className="dashboard-content">
+
+          <div className="premium-overview-heading">
+  <p className="premium-overview-kicker">
+    Financial Overview
+  </p>
+
+  <div className="premium-overview-title-row">
+    <h2>Your monthly budget</h2>
+
+  <div className="premium-month-picker">
+  
+              <button
+          type="button"
+          className="premium-month-picker-button"
+          onClick={() => setMonthPickerOpen(true)}
+        >
+          <span className="premium-month-picker-label">
+            📅 {formatFilterMonth(selectedMonth)}
+          </span>
+
+          <span className="premium-month-picker-chevron">
+            ▼
+          </span>
+        </button>
+
+        </div>
+          </div>
+
+            <BottomActionBar
+              onAddInflow={() => setInflowModal({})}
+              onAddExpense={() => setExpenseModal({})}
+              onRecurring={() => setRecurringManagerOpen(true)}
+            />
+            
+          </div>
 
         {error && <div className="form-message error dashboard-error" role="alert">{error}</div>}
         {mutationError && <div className="form-message error dashboard-error" role="alert">{mutationError}</div>}
@@ -439,6 +832,67 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
       {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
       {appLocked && <AppLockScreen onUnlock={unlockApp} />}
+
+        {monthPickerOpen && (
+  <div
+    className="month-picker-overlay"
+    role="presentation"
+    onClick={() => setMonthPickerOpen(false)}
+  >
+    <section
+      className="month-picker-sheet"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="month-picker-title"
+      onClick={(event) => event.stopPropagation()}
+    >
+      <div className="month-picker-header">
+        <div>
+          <p className="month-picker-kicker">Budget period</p>
+          <h2 id="month-picker-title">Select month</h2>
+        </div>
+
+        <button
+          type="button"
+          className="month-picker-close"
+          onClick={() => setMonthPickerOpen(false)}
+          aria-label="Close month picker"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="month-picker-list">
+        {monthOptions.map((option) => {
+          const active = option.value === selectedMonth;
+
+          return (
+            <button
+              type="button"
+              key={option.value}
+              className={`month-picker-option ${
+                active ? "active" : ""
+              }`}
+              onClick={() => {
+                setSelectedMonth(option.value);
+                setMonthPickerOpen(false);
+              }}
+            >
+              <span>{option.label}</span>
+
+              {active && (
+                <span className="month-picker-check" aria-hidden="true">
+                  ✓
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  </div>
+)}
+
     </main>
   );
 }

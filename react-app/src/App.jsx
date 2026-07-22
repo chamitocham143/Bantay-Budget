@@ -63,14 +63,14 @@ function App() {
   }
 
   return (
-    <DashboardPlaceholder
-      user={user}
-      profile={profile}
-      theme={theme}
-      onToggleTheme={toggleTheme}
-      onSignOut={() => signOut(auth)}
-    />
-  );
+  <DashboardPlaceholder
+    user={user}
+    profile={profile}
+    theme={theme}
+    onToggleTheme={toggleTheme}
+    onSignOut={() => signOut(auth)}
+  />
+);
 }
 
 export default App;

@@ -16,7 +16,7 @@ function AppLockScreen({ onUnlock }) {
         <img src="/icons/icon-512.png" alt="" aria-hidden="true" />
         <p className="eyebrow">Session protected</p>
         <h1 id="lock-title">Bantay Budget Locked</h1>
-        <p>No activity was detected for three minutes.</p>
+        <p>Due to inactivity.</p>
         <button type="button" onClick={onUnlock} ref={unlockButtonRef}>🔓 Unlock</button>
       </div>
     </section>
