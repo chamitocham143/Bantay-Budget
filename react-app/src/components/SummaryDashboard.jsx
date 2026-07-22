@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -128,8 +130,57 @@ function BudgetInsight({ totals }) {
   );
 }
 
+function useAnimatedPercentage(targetPercentage, duration = 1000) {
+  const [animatedPercentage, setAnimatedPercentage] = useState(0);
+
+  useEffect(() => {
+    const target = clampPercentage(targetPercentage);
+
+    const prefersReducedMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    if (prefersReducedMotion) {
+      setAnimatedPercentage(target);
+      return;
+    }
+
+    let animationFrame;
+    let startTime;
+
+    setAnimatedPercentage(0);
+
+    const animate = (timestamp) => {
+      if (!startTime) {
+        startTime = timestamp;
+      }
+
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Smooth ease-out
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+      setAnimatedPercentage(target * easedProgress);
+
+      if (progress < 1) {
+        animationFrame = requestAnimationFrame(animate);
+      }
+    };
+
+    animationFrame = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+    };
+  }, [targetPercentage, duration]);
+
+  return animatedPercentage;
+}
+
 function FeaturedCard({ card, totals }) {
   const percentage = getCardPercentage(card.key, totals);
+  const animatedPercentage = useAnimatedPercentage(percentage, 1100);
 
   return (
     <article
@@ -143,7 +194,7 @@ function FeaturedCard({ card, totals }) {
         </span>
 
         <span className="premium-card-percentage">
-          {Math.round(percentage)}%
+          {Math.round(animatedPercentage)}%
         </span>
       </div>
 
@@ -171,6 +222,7 @@ function FeaturedCard({ card, totals }) {
 
 function CompactCard({ card, totals }) {
   const percentage = getCardPercentage(card.key, totals);
+  const animatedPercentage = useAnimatedPercentage(percentage, 1100);
 
   return (
     <article
@@ -198,10 +250,14 @@ function CompactCard({ card, totals }) {
           aria-valuemax="100"
           aria-valuenow={Math.round(percentage)}
         >
-          <span style={{ width: `${percentage}%` }} />
+          <span
+            style={{
+              width: `${animatedPercentage}%`,
+            }}
+          />
         </div>
 
-        <b>{Math.round(percentage)}%</b>
+        <b>{Math.round(animatedPercentage)}%</b>
       </div>
     </article>
   );

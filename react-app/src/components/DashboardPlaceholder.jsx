@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import SummaryDashboard from "./SummaryDashboard.jsx";
 import TransactionsSection from "./TransactionsSection.jsx";
@@ -614,6 +614,56 @@ const getFinancialHealth = () => {
 
 const financialHealth = getFinancialHealth();
 
+const [animatedFinancialScore, setAnimatedFinancialScore] = useState(0);
+
+useEffect(() => {
+  const targetScore = Math.max(
+    0,
+    Math.min(100, Number(financialHealth.score) || 0)
+  );
+
+  const prefersReducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)"
+  ).matches;
+
+  if (prefersReducedMotion) {
+    setAnimatedFinancialScore(targetScore);
+    return;
+  }
+
+  const duration = 1200;
+  let animationFrame;
+  let startTime;
+
+  setAnimatedFinancialScore(0);
+
+  const animateScore = (timestamp) => {
+    if (!startTime) {
+      startTime = timestamp;
+    }
+
+    const elapsed = timestamp - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    // Smooth ease-out animation
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+    setAnimatedFinancialScore(
+      Math.round(targetScore * easedProgress)
+    );
+
+    if (progress < 1) {
+      animationFrame = requestAnimationFrame(animateScore);
+    }
+  };
+
+  animationFrame = requestAnimationFrame(animateScore);
+
+  return () => {
+    cancelAnimationFrame(animationFrame);
+  };
+}, [financialHealth.score]);
+
 const getMonthOptions = () => {
   const options = [];
   const current = new Date();
@@ -709,26 +759,31 @@ const monthOptions = getMonthOptions();
 
   <div className="financial-score-card">
 
-    <div
-      className="financial-health-score"
-      style={{
-        "--health-score": `${financialHealth.score * 3.6}deg`,
-      }}
-    >
-      <div className="financial-health-score-inner">
-        <strong>{financialHealth.score}</strong>
-      </div>
+  <div
+    className="financial-health-score"
+    role="progressbar"
+    aria-label="Financial Score"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow={financialHealth.score}
+    style={{
+      "--health-score": `${animatedFinancialScore * 3.6}deg`,
+    }}
+  >
+    <div className="financial-health-score-inner">
+      <strong>{animatedFinancialScore}</strong>
     </div>
-
-    <p className="financial-score-label">
-      Financial Score
-    </p>
-
-    <h3 className={`financial-score-title ${financialHealth.tone}`}>
-      {financialHealth.status}
-    </h3>
-
   </div>
+
+  <p className="financial-score-label">
+    Financial Score
+  </p>
+
+  <h3 className={`financial-score-title ${financialHealth.tone}`}>
+    {financialHealth.status}
+  </h3>
+
+</div>
 
   <div className="financial-summary-card">
 

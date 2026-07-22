@@ -7,8 +7,8 @@ function ConfirmDialog({ title, message, busy, onCancel, onConfirm }) {
         <div className="confirm-icon" aria-hidden="true">!</div>
         <p>{message}</p>
         <div className="modal-actions">
-          <button className="secondary-button" type="button" onClick={onCancel} disabled={busy}>No, keep it</button>
-          <button className="delete-button" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Deleting…" : "Yes, delete"}</button>
+          <button className="secondary-button" type="button" onClick={onCancel} disabled={busy}>No</button>
+          <button className="delete-button" type="button" onClick={onConfirm} disabled={busy}>{busy ? "Deleting…" : "Yes"}</button>
         </div>
       </div>
     </Modal>
