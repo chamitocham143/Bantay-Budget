@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { formatCurrency } from "./SummaryDashboard.jsx";
 
 const views = [
@@ -200,11 +200,161 @@ function EmptyState({ view }) {
   );
 }
 
+function SwipeableTransactionRow({
+  rowId,
+  isOpen,
+  onOpen,
+  onClose,
+  onEdit,
+  onDelete,
+  children,
+}) {
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const draggingRef = useRef(false);
+  const horizontalSwipeRef = useRef(false);
+
+  const [dragOffset, setDragOffset] = useState(0);
+
+  const ACTION_WIDTH = 144;
+
+  function handlePointerDown(event) {
+    if (
+      event.target.closest(
+        "button, select, option, input, textarea, a",
+      )
+    ) {
+      return;
+    }
+
+    startXRef.current = event.clientX;
+    startYRef.current = event.clientY;
+    draggingRef.current = true;
+    horizontalSwipeRef.current = false;
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  }
+
+  function handlePointerMove(event) {
+  if (!draggingRef.current) return;
+
+  const deltaX = event.clientX - startXRef.current;
+  const deltaY = event.clientY - startYRef.current;
+
+  if (!horizontalSwipeRef.current) {
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      return;
+    }
+
+    if (Math.abs(deltaX) > 6) {
+      horizontalSwipeRef.current = true;
+    }
+  }
+
+  if (!horizontalSwipeRef.current) return;
+
+  const offset = isOpen
+    ? Math.max(0, Math.min(ACTION_WIDTH, deltaX))
+    : Math.max(-ACTION_WIDTH, Math.min(0, deltaX));
+
+  setDragOffset(offset);
+}
+
+  function handlePointerEnd(event) {
+  if (!draggingRef.current) return;
+
+  draggingRef.current = false;
+
+  event.currentTarget.releasePointerCapture?.(
+    event.pointerId,
+  );
+
+  if (!horizontalSwipeRef.current) {
+    setDragOffset(0);
+    return;
+  }
+
+  if (isOpen) {
+    // A right swipe closes the already-open row.
+    if (dragOffset > ACTION_WIDTH / 3) {
+      onClose();
+    } else {
+      onOpen(rowId);
+    }
+  } else {
+    // A left swipe opens the closed row.
+    if (dragOffset < -ACTION_WIDTH / 3) {
+      onOpen(rowId);
+    } else {
+      onClose();
+    }
+  }
+
+  setDragOffset(0);
+  horizontalSwipeRef.current = false;
+}
+
+      let translateX;
+
+    if (draggingRef.current) {
+      translateX = isOpen
+        ? -ACTION_WIDTH + dragOffset
+        : dragOffset;
+    } else {
+      translateX = isOpen ? -ACTION_WIDTH : 0;
+    }
+
+  return (
+    <div className="swipe-transaction">
+      <div className="swipe-actions" aria-hidden={!isOpen}>
+        <button
+          type="button"
+          className="swipe-edit"
+          onClick={() => {
+            onClose();
+            onEdit();
+          }}
+        >
+          <span aria-hidden="true">✎</span>
+          Edit
+        </button>
+
+        <button
+          type="button"
+          className="swipe-delete"
+          onClick={() => {
+            onClose();
+            onDelete();
+          }}
+        >
+          <span aria-hidden="true">⌫</span>
+          Delete
+        </button>
+      </div>
+
+      <div
+        className={`swipe-foreground ${
+          isOpen ? "is-open" : ""
+        }`}
+        style={{
+          transform: `translateX(${translateX}px)`,
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerEnd}
+        onPointerCancel={handlePointerEnd}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 function TransactionsSection({ inflows, expenses, selectedMonth, currentMonth, onEditInflow, onDeleteInflow, onEditExpense, onDeleteExpense, onEditGeneratedExpense, onDeleteGeneratedExpense, onExpenseStatusChange, statusBusy }) {
   const [view, setView] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
-
- const normalizedSearch = searchTerm.trim().toLowerCase();
+  const [openRowId, setOpenRowId] = useState(null);
+  const normalizedSearch = searchTerm.trim().toLowerCase();
 
 const displayedInflows =
   view === "ALL" || view === "INFLOWS"
@@ -341,6 +491,7 @@ const groupedTransactions = useMemo(() => {
             </div>
 
             <div className="timeline-card">
+
               {transactions.map((transaction) => {
                 const isInflow = transaction.type === "INFLOW";
                 const status = isInflow
@@ -348,7 +499,42 @@ const groupedTransactions = useMemo(() => {
                   : statusDetails[transaction.status] ||
                     statusDetails["ON HOLD"];
 
+                    const rowId = `${transaction.type}-${transaction.id}`;
+
+                  const handleEdit = () => {
+                    if (isInflow) {
+                      onEditInflow(transaction);
+                      return;
+                    }
+
+                    transaction.recurring
+                      ? onEditGeneratedExpense(transaction)
+                      : onEditExpense(transaction);
+                  };
+
+                  const handleDelete = () => {
+                    if (isInflow) {
+                      onDeleteInflow(transaction);
+                      return;
+                    }
+
+                    transaction.recurring
+                      ? onDeleteGeneratedExpense(transaction)
+                      : onDeleteExpense(transaction);
+                  };
+
                 return (
+
+                  <SwipeableTransactionRow
+    key={rowId}
+    rowId={rowId}
+    isOpen={openRowId === rowId}
+    onOpen={setOpenRowId}
+    onClose={() => setOpenRowId(null)}
+    onEdit={handleEdit}
+    onDelete={handleDelete}
+  >
+
                   <article
                     className={`timeline-row ${
                       isInflow ? "timeline-inflow" : "timeline-expense"
@@ -415,47 +601,9 @@ const groupedTransactions = useMemo(() => {
                         {formatCurrency(transaction.amount)}
                       </strong>
 
-                      <div className="timeline-actions">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isInflow) {
-                              onEditInflow(transaction);
-                              return;
-                            }
-
-                            transaction.recurring
-                              ? onEditGeneratedExpense(transaction)
-                              : onEditExpense(transaction);
-                          }}
-                          aria-label={`Edit ${
-                            transaction.desc || "transaction"
-                          }`}
-                        >
-                          ✎
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (isInflow) {
-                              onDeleteInflow(transaction);
-                              return;
-                            }
-
-                            transaction.recurring
-                              ? onDeleteGeneratedExpense(transaction)
-                              : onDeleteExpense(transaction);
-                          }}
-                          aria-label={`Delete ${
-                            transaction.desc || "transaction"
-                          }`}
-                        >
-                          ⌫
-                        </button>
-                      </div>
                     </div>
                   </article>
+                  </SwipeableTransactionRow>
                 );
               })}
             </div>
