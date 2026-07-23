@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCurrency } from "./SummaryDashboard.jsx";
 
 const views = [
@@ -71,7 +71,7 @@ function getDateGroupLabel(dateString) {
 
 function getTransactionIcon(transaction) {
   if (transaction.type === "INFLOW") return "💰";
-  if (transaction.recurring) return "↻";
+  //if (transaction.recurring) return "↻";
 
   const text = String(transaction.desc || "").toLowerCase();
 
@@ -93,7 +93,20 @@ function getTransactionIcon(transaction) {
   }
 
   if (
+    text.includes("bank") ||
+    text.includes("loan") ||
+    text.includes("insurance")
+  ) {
+    return "🏦";
+  }
+
+  if (
     text.includes("food") ||
+    text.includes("seafood city") ||
+    text.includes("el super") ||
+    text.includes("albertson") ||
+    text.includes("albertsons") ||
+    text.includes("walmart") ||
     text.includes("restaurant") ||
     text.includes("grocery") ||
     text.includes("costco")
@@ -108,6 +121,17 @@ function getTransactionIcon(transaction) {
     text.includes("electric")
   ) {
     return "📱";
+  }
+
+  if (
+    text.includes("apple") ||
+    text.includes("best buy") ||
+    text.includes("living spaces") ||
+    text.includes("mission lane") ||
+    text.includes("first premier") ||
+    text.includes("capital one")
+  ) {
+    return "💳";
   }
 
   if (
@@ -215,6 +239,11 @@ function SwipeableTransactionRow({
   const horizontalSwipeRef = useRef(false);
 
   const [dragOffset, setDragOffset] = useState(0);
+  const [isSwiping, setIsSwiping] = useState(false);
+
+  const [view, setView] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [openRowId, setOpenRowId] = useState(null);
 
   const ACTION_WIDTH = 144;
 
@@ -232,22 +261,28 @@ function SwipeableTransactionRow({
     draggingRef.current = true;
     horizontalSwipeRef.current = false;
 
-    event.currentTarget.setPointerCapture?.(event.pointerId);
+    
   }
 
-  function handlePointerMove(event) {
+ function handlePointerMove(event) {
   if (!draggingRef.current) return;
 
   const deltaX = event.clientX - startXRef.current;
   const deltaY = event.clientY - startYRef.current;
 
   if (!horizontalSwipeRef.current) {
+    // Treat the gesture as vertical scrolling.
     if (Math.abs(deltaY) > Math.abs(deltaX)) {
       return;
     }
 
     if (Math.abs(deltaX) > 6) {
       horizontalSwipeRef.current = true;
+      setIsSwiping(true);
+
+      event.currentTarget.setPointerCapture?.(
+        event.pointerId
+      );
     }
   }
 
@@ -265,9 +300,13 @@ function SwipeableTransactionRow({
 
   draggingRef.current = false;
 
+  if (
+  event.currentTarget.hasPointerCapture?.(event.pointerId)
+) {
   event.currentTarget.releasePointerCapture?.(
-    event.pointerId,
+    event.pointerId
   );
+}
 
   if (!horizontalSwipeRef.current) {
     setDragOffset(0);
@@ -291,6 +330,7 @@ function SwipeableTransactionRow({
   }
 
   setDragOffset(0);
+  setIsSwiping(false);
   horizontalSwipeRef.current = false;
 }
 
@@ -306,7 +346,12 @@ function SwipeableTransactionRow({
 
   return (
     <div className="swipe-transaction">
-      <div className="swipe-actions" aria-hidden={!isOpen}>
+      <div
+        className={`swipe-actions ${
+          isOpen || isSwiping ? "is-visible" : ""
+        }`}
+        aria-hidden={!isOpen && !isSwiping}
+      >
         <button
           type="button"
           className="swipe-edit"
@@ -335,9 +380,9 @@ function SwipeableTransactionRow({
       <div
         className={`swipe-foreground ${
           isOpen ? "is-open" : ""
-        }`}
+        } ${isSwiping ? "is-swiping" : ""}`}
         style={{
-          transform: `translateX(${translateX}px)`,
+          transform: `translate3d(${translateX}px, 0, 0)`,
         }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -354,16 +399,22 @@ function TransactionsSection({ inflows, expenses, selectedMonth, currentMonth, o
   const [view, setView] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [openRowId, setOpenRowId] = useState(null);
+  const [showAllTransactions, setShowAllTransactions] = useState(false);
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
-const displayedInflows =
+  useEffect(() => {
+  setShowAllTransactions(false);
+  setOpenRowId(null);
+}, [view, normalizedSearch, selectedMonth]);
+
+  const displayedInflows =
   view === "ALL" || view === "INFLOWS"
     ? inflows.filter((item) =>
         String(item.desc || "").toLowerCase().includes(normalizedSearch),
       )
     : [];
 
-const displayedExpenses = useMemo(() => {
+  const displayedExpenses = useMemo(() => {
   let result = expenses;
   if (view === "INFLOWS") return [];
   if (view === "EXPENSES") {
@@ -399,19 +450,34 @@ const timelineTransactions = useMemo(() => {
   );
 }, [displayedInflows, displayedExpenses]);
 
+const visibleTransactions = useMemo(() => {
+  if (showAllTransactions) {
+    return timelineTransactions;
+  }
+
+  return timelineTransactions.slice(0, 5);
+}, [timelineTransactions, showAllTransactions]);
+
+const hasAdditionalTransactions =
+  timelineTransactions.length > 5;
+
 const groupedTransactions = useMemo(() => {
-  return timelineTransactions.reduce((groups, transaction) => {
-    const date = getTransactionDate(transaction);
-    const key = date || "unknown";
+  return visibleTransactions.reduce(
+    (groups, transaction) => {
+      const date = getTransactionDate(transaction);
+      const key = date || "unknown";
 
-    if (!groups[key]) {
-      groups[key] = [];
-    }
+      if (!groups[key]) {
+        groups[key] = [];
+      }
 
-    groups[key].push(transaction);
-    return groups;
-  }, {});
-}, [timelineTransactions]);
+      groups[key].push(transaction);
+
+      return groups;
+    },
+    {}
+  );
+}, [visibleTransactions]);
 
 
   const isEmpty = timelineTransactions.length === 0;
@@ -584,7 +650,7 @@ const groupedTransactions = useMemo(() => {
 
                       {transaction.recurring && (
                         <span className="timeline-due">
-                          Due {formatRecurringDueDate(transaction)}
+                          🔄 Due {formatRecurringDueDate(transaction)}
                         </span>
                       )}
                     </div>
@@ -610,6 +676,32 @@ const groupedTransactions = useMemo(() => {
           </section>
         ),
       )}
+
+        {hasAdditionalTransactions && (
+  <button
+    className="transactions-expand-button"
+    type="button"
+    aria-expanded={showAllTransactions}
+    onClick={() => {
+      setOpenRowId(null);
+
+      setShowAllTransactions(
+        (currentValue) => !currentValue
+      );
+    }}
+  >
+    <span>
+      {showAllTransactions
+        ? "Show Less"
+        : `See All ${timelineTransactions.length} Transactions`}
+    </span>
+
+    <i aria-hidden="true">
+      {showAllTransactions ? "↑" : "↓"}
+    </i>
+  </button>
+)}
+
     </div>
   )}
 </section>

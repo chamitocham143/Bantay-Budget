@@ -691,6 +691,13 @@ const getMonthOptions = () => {
 
 const monthOptions = getMonthOptions();
 
+const financialScoreAccent =
+  financialHealth.tone === "danger"
+    ? "card-danger"
+    : financialHealth.tone === "warning"
+      ? "card-amber"
+      : "card-emerald";
+
   return (
     <main className={`dashboard-shell ${pulling || refreshing ? "pulling" : ""}`} ref={pullTargetRef}>
       <div className={`pull-refresh-indicator ${pulling || refreshing ? "active" : ""}`} aria-hidden={!pulling && !refreshing}><span>↻</span>{refreshing ? "Refreshing live data…" : "Release to refresh"}</div>
@@ -712,7 +719,7 @@ const monthOptions = getMonthOptions();
         </div>
       </header>
 
-            <section className="balance-hero">
+      <section className="balance-hero">
         <div className="balance-hero-glow" aria-hidden="true" />
 
         <div className="balance-hero-content">
@@ -757,7 +764,10 @@ const monthOptions = getMonthOptions();
 
       <div className="financial-health-grid">
 
-  <div className="financial-score-card">
+  <div
+  className={`financial-score-card financial-premium-card ${financialScoreAccent}`}
+>
+  <div className="premium-card-glow" aria-hidden="true" />
 
   <div
     className="financial-health-score"
@@ -783,15 +793,23 @@ const monthOptions = getMonthOptions();
     {financialHealth.status}
   </h3>
 
+      <div
+      className="premium-featured-chart financial-card-chart"
+      aria-hidden="true"
+    >
+      <span />
+      <span />
+    </div>
+
 </div>
 
-  <div className="financial-summary-card">
+  <div className="financial-summary-card financial-premium-card card-teal">
+  <div className="premium-card-glow" aria-hidden="true" />
 
-    <h3>Health Summary</h3>
+  <h3>Health Summary</h3>
 
-    <div className="financial-insights-list">
-
-      {financialHealth.insights.map((insight, index) => (
+  <div className="financial-insights-list">
+     {financialHealth.insights.map((insight, index) => (
 
         <div
           className={`financial-insight-item ${insight.type}`}
@@ -806,10 +824,17 @@ const monthOptions = getMonthOptions();
         </div>
 
       ))}
-
-    </div>
-
   </div>
+
+  <div
+    className="premium-featured-chart financial-card-chart"
+    aria-hidden="true"
+  >
+    <span />
+    <span />
+  </div>
+</div>
+
 
 </div>
 
