@@ -154,8 +154,8 @@ function AuthScreen({ theme, onToggleTheme }) {
   return (
     <main className="auth-screen">
       <button className="theme-button" type="button" onClick={onToggleTheme}>
-        {theme === "dark" ? "Light mode" : "Dark mode"}
-      </button>
+        {theme === "dark" ? "☀️" : "🌙"}
+      </button> 
 
       <section className="auth-card" aria-labelledby="auth-title">
         <div className="brand-mark" aria-hidden="true">BB</div>
@@ -174,25 +174,25 @@ function AuthScreen({ theme, onToggleTheme }) {
         {mode === "login" ? (
           <form onSubmit={handleLogin}>
             <label>
-              <span>Email</span>
               <input
                 type="email"
+                placeholder="Email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
               />
             </label>
             <label>
-              <span>Password</span>
               <div className="password-field">
                 <input
                   type={showPassword ? "text" : "password"}
+                  placeholder="Password"
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
                 />
                 <button type="button" onClick={() => setShowPassword((shown) => !shown)}>
-                  {showPassword ? "Hide" : "Show"}
+                  {showPassword ? "hide" : "Show"}
                 </button>
               </div>
             </label>

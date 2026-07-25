@@ -134,6 +134,49 @@ function getTransactionIcon(transaction) {
     return "💳";
   }
 
+   if (
+    text.includes("mcdo") ||
+    text.includes("jollibee") ||
+    text.includes("burger")
+  ) {
+    return "🍔";
+  }
+
+   if (
+    text.includes("starbuck")
+  ) {
+    return "🥤";
+  }
+
+  if (
+    text.includes("buffet")
+  ) {
+    return "🍱";
+  }
+
+  if (
+    text.includes("carwash") ||
+    text.includes("car wash")
+  ) {
+    return "🚘";
+  }
+
+  if (
+    text.includes("adidas") ||
+    text.includes("puma") ||
+    text.includes("jordan") ||
+    text.includes("nike")
+  ) {
+    return "👟";
+  }
+
+  if (
+    text.includes("haircut") ||
+    text.includes("salon")
+  ) {
+    return "💇‍♂️";
+  }
+
   if (
     text.includes("netflix") ||
     text.includes("spotify") ||

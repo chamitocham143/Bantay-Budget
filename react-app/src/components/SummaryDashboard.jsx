@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 const currencyFormatter = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -14,6 +15,8 @@ const summaryCards = [
     key: "pendingTotal",
     label: "Total Pending",
     note: "Pending payments to settle",
+    info:
+      "The total amount of expenses marked Pending. These payments have not been paid yet but are included in your planned allocations.",
     icon: "⏳",
     featured: true,
     accent: "amber",
@@ -22,6 +25,8 @@ const summaryCards = [
     key: "available",
     label: "Remaining Balance",
     note: "After all allocations",
+    info:
+      "The amount remaining after paid and pending expenses are allocated. Expenses placed On Hold are not deducted from this balance.",
     icon: "↗",
     featured: true,
     accent: "emerald",
@@ -30,6 +35,8 @@ const summaryCards = [
     key: "inflowTotal",
     label: "Total Income",
     note: "All income received",
+    info:
+      "The total income recorded for the selected month. All summary percentages are compared with this amount.",
     icon: "💰",
     accent: "green",
   },
@@ -37,6 +44,8 @@ const summaryCards = [
     key: "paidTotal",
     label: "Total Paid",
     note: "All paid expenses",
+    info:
+      "The total amount of expenses marked Paid for the selected month. Paid expenses are deducted from your income.",
     icon: "✅",
     accent: "teal",
   },
@@ -44,6 +53,8 @@ const summaryCards = [
     key: "onHoldTotal",
     label: "Total On Hold",
     note: "Temporarily set aside",
+    info:
+      "The total amount of expenses placed On Hold. These expenses are tracked but are not currently deducted from your remaining balance.",
     icon: "⏸",
     accent: "gold",
   },
@@ -51,6 +62,8 @@ const summaryCards = [
     key: "allocable",
     label: "Allocable Balance",
     note: "Income minus paid expenses",
+    info:
+      "The amount available for allocation after paid expenses are deducted. Pending payments have not yet been deducted from this amount.",
     icon: "💵",
     accent: "blue",
   },
@@ -178,7 +191,70 @@ function useAnimatedPercentage(targetPercentage, duration = 1000) {
   return animatedPercentage;
 }
 
-function FeaturedCard({ card, totals }) {
+function SummaryInfo({
+  card,
+  isOpen,
+  onToggle,
+}) {
+  const tooltipId = `summary-info-${card.key}`;
+
+  const mobileTooltip =
+    isOpen && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="summary-mobile-tooltip"
+            role="tooltip"
+            aria-live="polite"
+          >
+            <strong>{card.label}</strong>
+            <p>{card.info}</p>
+          </div>,
+          document.body
+        )
+      : null;
+
+  return (
+    <>
+      <div
+        className={`summary-info ${
+          isOpen ? "is-open" : ""
+        }`}
+      >
+        <button
+          className="summary-info-button"
+          type="button"
+          aria-label={`Information about ${card.label}`}
+          aria-expanded={isOpen}
+          aria-controls={tooltipId}
+          onClick={(event) => {
+            event.stopPropagation();
+            onToggle();
+          }}
+        >
+          <span aria-hidden="true">i</span>
+        </button>
+
+        <div
+          className="summary-info-tooltip"
+          id={tooltipId}
+          role="tooltip"
+        >
+          <strong>{card.label}</strong>
+          <p>{card.info}</p>
+        </div>
+      </div>
+
+      {mobileTooltip}
+    </>
+  );
+}
+
+function FeaturedCard({
+  card,
+  totals,
+  infoOpen,
+  onInfoToggle,
+}) {
   const percentage = getCardPercentage(card.key, totals);
   const animatedPercentage = useAnimatedPercentage(percentage, 1100);
 
@@ -188,14 +264,22 @@ function FeaturedCard({ card, totals }) {
     >
       <div className="premium-card-glow" aria-hidden="true" />
 
-      <div className="premium-card-header">
+        <div className="premium-card-header">
         <span className="premium-summary-icon" aria-hidden="true">
           {card.icon}
         </span>
 
-        <span className="premium-card-percentage">
-          {Math.round(animatedPercentage)}%
-        </span>
+        <div className="premium-card-header-meta">
+          <span className="premium-card-percentage">
+            {Math.round(animatedPercentage)}%
+          </span>
+
+          <SummaryInfo
+            card={card}
+            isOpen={infoOpen}
+            onToggle={onInfoToggle}
+          />
+        </div>
       </div>
 
       <div className="premium-card-body">
@@ -220,7 +304,12 @@ function FeaturedCard({ card, totals }) {
   );
 }
 
-function CompactCard({ card, totals }) {
+    function CompactCard({
+      card,
+      totals,
+      infoOpen,
+      onInfoToggle,
+    }) {
   const percentage = getCardPercentage(card.key, totals);
   const animatedPercentage = useAnimatedPercentage(percentage, 1100);
 
@@ -237,6 +326,12 @@ function CompactCard({ card, totals }) {
           <p>{card.label}</p>
           <strong>{formatCurrency(totals[card.key])}</strong>
         </div>
+
+        <SummaryInfo
+          card={card}
+          isOpen={infoOpen}
+          onToggle={onInfoToggle}
+        />
       </div>
 
       <small>{card.note}</small>
@@ -264,8 +359,48 @@ function CompactCard({ card, totals }) {
 }
 
 function SummaryDashboard({ totals }) {
-  const featuredCards = summaryCards.filter((card) => card.featured);
-  const compactCards = summaryCards.filter((card) => !card.featured);
+  const [openInfoKey, setOpenInfoKey] = useState(null);
+
+  const featuredCards = summaryCards.filter(
+    (card) => card.featured
+  );
+
+  const compactCards = summaryCards.filter(
+    (card) => !card.featured
+  );
+
+  useEffect(() => {
+    function handleOutsidePress(event) {
+      if (!event.target.closest(".summary-info")) {
+        setOpenInfoKey(null);
+      }
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setOpenInfoKey(null);
+      }
+    }
+
+    document.addEventListener(
+      "pointerdown",
+      handleOutsidePress
+    );
+
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener(
+        "pointerdown",
+        handleOutsidePress
+      );
+
+      window.removeEventListener(
+        "keydown",
+        handleEscape
+      );
+    };
+  }, []);
 
   return (
     <section className="premium-dashboard-summary">
@@ -274,7 +409,19 @@ function SummaryDashboard({ totals }) {
         aria-label="Featured financial overview"
       >
         {featuredCards.map((card) => (
-          <FeaturedCard key={card.key} card={card} totals={totals} />
+          <FeaturedCard
+            key={card.key}
+            card={card}
+            totals={totals}
+            infoOpen={openInfoKey === card.key}
+            onInfoToggle={() => {
+              setOpenInfoKey((currentKey) =>
+                currentKey === card.key
+                  ? null
+                  : card.key
+              );
+            }}
+          />
         ))}
       </section>
 
@@ -283,7 +430,19 @@ function SummaryDashboard({ totals }) {
         aria-label="Financial summary"
       >
         {compactCards.map((card) => (
-          <CompactCard key={card.key} card={card} totals={totals} />
+          <CompactCard
+            key={card.key}
+            card={card}
+            totals={totals}
+            infoOpen={openInfoKey === card.key}
+            onInfoToggle={() => {
+              setOpenInfoKey((currentKey) =>
+                currentKey === card.key
+                  ? null
+                  : card.key
+              );
+            }}
+          />
         ))}
       </section>
 
