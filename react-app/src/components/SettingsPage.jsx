@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
+function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, appLockEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -23,6 +23,32 @@ function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadC
         <div className="settings-section-label">Preferences</div>
         <section className="settings-list">
           <button type="button" onClick={onToggleTheme}><span>{theme === "dark" ? "☀️" : "🌙"}</span><div><strong>Appearance</strong><small>Currently using {theme} mode</small></div><i>›</i></button>
+          <div className="settings-currency-row">
+  <span aria-hidden="true">
+    {currency === "PHP" ? "🇵🇭" : "🇺🇸"}
+  </span>
+
+  <div>
+    <strong>Currency</strong>
+
+    <small>
+      {currency === "PHP"
+        ? "Philippine Peso (₱)"
+        : "US Dollar ($)"}
+    </small>
+  </div>
+
+  <select
+    value={currency}
+    onChange={(event) =>
+      onCurrencyChange(event.target.value)
+    }
+    aria-label="Select currency"
+  >
+    <option value="USD">USD — $</option>
+    <option value="PHP">PHP — ₱</option>
+  </select>
+</div>
           <button type="button" onClick={onNotifications}><span>🔔</span><div><strong>Notifications</strong><small>{pushEnabled ? "Push enabled on this device" : "Push disabled on this device"}</small></div>{unreadCount > 0 ? <b>{unreadCount}</b> : <i>›</i>}</button>
           <button type="button" onClick={onRecurring}><span>↻</span><div><strong>Recurring Expenses</strong><small>Manage monthly templates</small></div><i>›</i></button>
           <div className="settings-toggle-row"><span>🔒</span><div><strong>App Lock</strong><small>Lock only after 3 minutes of inactivity</small></div><label className="switch-control"><input type="checkbox" checked={appLockEnabled} onChange={(event) => onToggleAppLock(event.target.checked)} /><span /></label></div>
@@ -54,9 +80,11 @@ function SettingsPage({ name, email, theme, pushEnabled, appLockEnabled, unreadC
         </section>
 
         <button className="settings-logout" type="button" onClick={onLogout}>Sign Out</button>
-        <footer className="settings-footer"><strong>Bantay Budget</strong><span>React migration preview</span></footer>
+        <footer className="settings-footer"><strong>Bantay Budget</strong><span>Version1.0.0</span></footer>
       </div>
     </section>
+
+
   );
 }
 

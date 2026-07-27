@@ -158,9 +158,11 @@ function AuthScreen({ theme, onToggleTheme }) {
       </button> 
 
       <section className="auth-card" aria-labelledby="auth-title">
-        <div className="brand-mark" aria-hidden="true">BB</div>
+        <div className="brand-mark" aria-hidden="true">
+          <img src="/icons/icon-192.png" alt="" />
+        </div>
         <p className="eyebrow">Personal finance made simple</p>
-        <h1 id="auth-title">Bantay Budget</h1>
+        <h2 id="auth-title">Bantay Budget</h2>
         <p className="auth-subtitle">
           {mode === "login" ? "Sign in to get started" : "Create your account"}
         </p>
@@ -215,17 +217,14 @@ function AuthScreen({ theme, onToggleTheme }) {
         ) : (
           <form onSubmit={handleRegistration}>
             <label>
-              <span>Name</span>
-              <input name="name" value={registration.name} onChange={updateRegistration} autoComplete="name" />
+              <input name="name" value={registration.name} onChange={updateRegistration} placeholder="First Name" autoComplete="name" />
             </label>
             <label>
-              <span>Email</span>
-              <input name="email" type="email" value={registration.email} onChange={updateRegistration} autoComplete="email" />
+              <input name="email" type="email" value={registration.email} placeholder="Email" onChange={updateRegistration} autoComplete="email" />
             </label>
             <label>
-              <span>Password</span>
               <div className="password-field">
-                <input name="password" type={showRegisterPassword ? "text" : "password"} value={registration.password} onChange={updateRegistration} autoComplete="new-password" />
+                <input name="password" type={showRegisterPassword ? "text" : "password"} value={registration.password} placeholder="Password" onChange={updateRegistration} autoComplete="new-password" />
                 <button type="button" onClick={() => setShowRegisterPassword((shown) => !shown)}>{showRegisterPassword ? "Hide" : "Show"}</button>
               </div>
             </label>

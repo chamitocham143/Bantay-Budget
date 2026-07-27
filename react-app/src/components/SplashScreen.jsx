@@ -6,11 +6,11 @@ function SplashScreen() {
       aria-busy="true"
     >
       <div className="splash-content">
-        <div className="brand-mark splash-mark" aria-hidden="true">
-          BB
+         <div className="brand-mark" aria-hidden="true">
+          <img src="/icons/icon-192.png" alt="" />
         </div>
 
-        <h1>Bantay Budget</h1>
+        <h2>Bantay Budget</h2>
 
         <div className="splash-loading">
           <p>Wait lang po</p>

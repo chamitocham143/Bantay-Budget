@@ -1,13 +1,41 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const currencyFormatter = new Intl.NumberFormat("en-US", {
-  style: "currency",
-  currency: "USD",
-});
+const currencyFormatters = new Map();
+
+function getSelectedCurrency() {
+  if (typeof window === "undefined") {
+    return "USD";
+  }
+
+  return localStorage.getItem(
+    "bantayBudgetCurrency"
+  ) === "PHP"
+    ? "PHP"
+    : "USD";
+}
 
 export function formatCurrency(amount) {
-  return currencyFormatter.format(Number(amount || 0));
+  const currency = getSelectedCurrency();
+
+  if (!currencyFormatters.has(currency)) {
+    const locale =
+      currency === "PHP" ? "en-PH" : "en-US";
+
+    currencyFormatters.set(
+      currency,
+      new Intl.NumberFormat(locale, {
+        style: "currency",
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
+    );
+  }
+
+  return currencyFormatters
+    .get(currency)
+    .format(Number(amount || 0));
 }
 
 const summaryCards = [

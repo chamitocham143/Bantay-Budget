@@ -98,13 +98,14 @@ button:disabled { cursor: wait; opacity: 0.65; }
   height: 100%;
   padding: 38px 28px;
   border: 1px solid var(--border);
-  border-radius: 28px;
+  border-top-left-radius: 28px;
+  border-top-right-radius: 28px;
   background: var(--surface);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
 
-.auth-card { text-align: center; }
+.auth-card { text-align: center;}
 
 .brand-mark {
   width: 78px;
@@ -120,6 +121,7 @@ button:disabled { cursor: wait; opacity: 0.65; }
   font-weight: 800;
   letter-spacing: -1px;
 }
+.brand-mark img { width: 85px; height: 85px; border-radius: 22px; box-shadow: 0 12px 30px rgb(0 83 70 / 24%); }
 
 .eyebrow {
   margin: 0 0 8px;
@@ -2246,25 +2248,19 @@ input:focus,
 
     display:flex;
     min-height: 0;
-  height: auto;
-  box-sizing: border-box;
-
+    height: auto;
+    box-sizing: border-box;
     flex-direction:column;
-
     justify-content:center;
-
     align-items:center;
-     padding: 24px 20px;
-
+    padding: 24px 20px;
     border-radius:24px;
-
     background:
         linear-gradient(
             145deg,
             rgba(255,255,255,.05),
             rgba(255,255,255,.02)
         );
-
     border:1px solid rgba(255,255,255,.08);
 
 }
@@ -2442,7 +2438,6 @@ input:focus,
 
 .financial-health-status {
   padding: 8px 12px;
-
   border-radius: 999px;
 
   font-size: 11px;
@@ -2706,9 +2701,6 @@ input:focus,
   position: relative;
   overflow: hidden;
   isolation: isolate;
-
-  border: 1px solid rgb(255 255 255 / 10%);
-
   box-shadow:
     0 24px 55px rgb(0 0 0 / 18%),
     inset 0 1px 0 rgb(255 255 255 / 8%);
@@ -4211,7 +4203,7 @@ input:focus,
 
 @media (max-width: 520px) {
   .auth-screen { padding: 76px 14px 24px; align-items: start; }
-  .auth-card { padding: 36px 20px; border-radius: 24px; }
+  .auth-card { padding: 36px 20px; border-top-left-radius: 24px; border-top-right-radius: 24px; }
   .dashboard-shell { padding: 20px 14px; }
   .dashboard-topbar { align-items: flex-start; }
   .dashboard-topbar h1 { font-size: clamp(26px, 8vw, 36px); }
@@ -4267,6 +4259,28 @@ input:focus,
 
 .premium-featured-card .premium-card-glow {
   display: none;
+}
+
+.financial-premium-card .premium-card-glow {
+  width: 280px;
+  height: 280px;
+  top: -145px;
+  right: -125px;
+  z-index: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle,
+      var(--card-accent) 0%,
+      transparent 70%
+    );
+
+  filter: none;
+  opacity: 0.2;
+  pointer-events: none;
+  transform: none;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 /* =========================================================
@@ -4395,4 +4409,81 @@ input:focus,
 .timeline-card .swipe-transaction:only-child,
 .timeline-card .swipe-transaction:only-child .swipe-foreground {
   border-radius: inherit;
+}
+
+.settings-currency-row {
+  width: 100%;
+  min-height: 68px;
+  padding: 12px;
+
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+
+  border: 1px solid transparent;
+  border-radius: 16px;
+
+  color: var(--text);
+  background: transparent;
+  box-sizing: border-box;
+}
+
+.settings-currency-row > span {
+  width: 40px;
+  height: 40px;
+
+  display: grid;
+  place-items: center;
+
+  border-radius: 13px;
+  background: var(--input);
+
+  font-size: 18px;
+}
+
+.settings-currency-row strong {
+  display: block;
+  font-size: 13px;
+}
+
+.settings-currency-row small {
+  display: block;
+  margin-top: 4px;
+
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.settings-currency-row select {
+  min-width: 100px;
+  min-height: 40px;
+  padding: 0 30px 0 12px;
+
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  color: var(--text);
+  background: var(--input);
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+
+  outline: none;
+}
+
+.settings-currency-row select:focus {
+  border-color: var(--primary-light);
+
+  box-shadow:
+    0 0 0 3px rgb(10 156 131 / 14%);
+}
+
+@media (max-width: 420px) {
+  .settings-currency-row select {
+    min-width: 94px;
+    font-size: 11px;
+  }
 }

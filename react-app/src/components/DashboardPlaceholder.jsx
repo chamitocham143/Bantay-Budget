@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
-import SummaryDashboard from "./SummaryDashboard.jsx";
+import SummaryDashboard, { formatCurrency } from "./SummaryDashboard.jsx";
 import TransactionsSection from "./TransactionsSection.jsx";
 import InflowModal from "./InflowModal.jsx";
 import ExpenseModal from "./ExpenseModal.jsx";
@@ -54,7 +54,7 @@ function getPreviousMonth(monthValue) {
   ).padStart(2, "0")}`;
 }
 
-function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }) {
+function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange, onToggleTheme, onSignOut }) {
   const [selectedMonth, setSelectedMonth] = useState(getLocalMonthString);
   const [inflowModal, setInflowModal] = useState(null);
   const [inflowToDelete, setInflowToDelete] = useState(null);
@@ -374,12 +374,6 @@ function DashboardPlaceholder({ user, profile, theme, onToggleTheme, onSignOut }
     year: "numeric",
   }).format(new Date(Number(year), Number(month) - 1, 1));
 };
-
-const formatCurrency = (amount = 0) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-  }).format(Number(amount) || 0);
 
 // Getting Previous Month Value //
 
@@ -906,7 +900,7 @@ const financialScoreAccent =
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
       {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}

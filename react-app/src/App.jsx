@@ -12,8 +12,20 @@ function getInitialTheme() {
   return localStorage.getItem(THEME_KEY) || "dark";
 }
 
+const CURRENCY_KEY = "bantayBudgetCurrency";
+
+function getInitialCurrency() {
+  const savedCurrency =
+    localStorage.getItem(CURRENCY_KEY);
+
+  return savedCurrency === "PHP" ? "PHP" : "USD";
+}
+
 function App() {
   const [theme, setTheme] = useState(getInitialTheme);
+  const [currency, setCurrency] =
+    useState(getInitialCurrency);
+
   const [authReady, setAuthReady] = useState(false);
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -24,34 +36,60 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (nextUser) => {
-      if (!nextUser?.emailVerified) {
-        setUser(null);
-        setProfile(null);
-        setAuthReady(true);
-        return;
-      }
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      async (nextUser) => {
+        if (!nextUser?.emailVerified) {
+          setUser(null);
+          setProfile(null);
+          setAuthReady(true);
+          return;
+        }
 
-      setUser(nextUser);
+        setUser(nextUser);
 
-      try {
-        const profileSnapshot = await getDoc(doc(db, "users", nextUser.uid));
-        setProfile(profileSnapshot.exists() ? profileSnapshot.data() : null);
-      } catch (error) {
-        console.error("Unable to load user profile:", error);
-        setProfile(null);
-      } finally {
-        setAuthReady(true);
+        try {
+          const profileSnapshot = await getDoc(
+            doc(db, "users", nextUser.uid)
+          );
+
+          setProfile(
+            profileSnapshot.exists()
+              ? profileSnapshot.data()
+              : null
+          );
+        } catch (error) {
+          console.error(
+            "Unable to load user profile:",
+            error
+          );
+
+          setProfile(null);
+        } finally {
+          setAuthReady(true);
+        }
       }
-    });
+    );
 
     return unsubscribe;
   }, []);
 
   const toggleTheme = () => {
     setTheme((currentTheme) =>
-      currentTheme === "dark" ? "light" : "dark",
+      currentTheme === "dark" ? "light" : "dark"
     );
+  };
+
+  const changeCurrency = (nextCurrency) => {
+    const supportedCurrency =
+      nextCurrency === "PHP" ? "PHP" : "USD";
+
+    localStorage.setItem(
+      CURRENCY_KEY,
+      supportedCurrency
+    );
+
+    setCurrency(supportedCurrency);
   };
 
   if (!authReady) {
@@ -59,18 +97,25 @@ function App() {
   }
 
   if (!user) {
-    return <AuthScreen theme={theme} onToggleTheme={toggleTheme} />;
+    return (
+      <AuthScreen
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
   return (
-  <DashboardPlaceholder
-    user={user}
-    profile={profile}
-    theme={theme}
-    onToggleTheme={toggleTheme}
-    onSignOut={() => signOut(auth)}
-  />
-);
+    <DashboardPlaceholder
+      user={user}
+      profile={profile}
+      theme={theme}
+      currency={currency}
+      onCurrencyChange={changeCurrency}
+      onToggleTheme={toggleTheme}
+      onSignOut={() => signOut(auth)}
+    />
+  );
 }
 
 export default App;
