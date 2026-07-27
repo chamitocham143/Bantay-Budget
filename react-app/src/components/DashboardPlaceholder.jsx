@@ -25,6 +25,7 @@ import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
 import { sendTestPush } from "../services/developerTools.js";
 import BottomActionBar from "./BottomActionBar";
+import Calculator from "./Calculator.jsx";
 import { useMemo } from "react";
 
 const MONTH_OPTIONS = [
@@ -85,6 +86,7 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const [developerEnabled, setDeveloperEnabled] = useState(false);
   const [testPushBusy, setTestPushBusy] = useState(false);
   const [testPushMessage, setTestPushMessage] = useState(null);
+  const [calculatorOpen, setCalculatorOpen] = useState(false);
   const name = profile?.name || user.email?.split("@")[0] || "User";
   const { inflows, expenses, totals, loading, error } = useBudgetData(
     user.uid,
@@ -443,7 +445,7 @@ const balanceTrend = getBalanceTrend();
 
 //*********************************************** */
 
-const getBalanceMessage = () => {
+  const getBalanceMessage = () => {
   const available = Number(totals?.available || 0);
   const pending = Number(totals?.pendingTotal || 0);
   const onHold = Number(totals?.onHoldTotal || 0);
@@ -692,6 +694,23 @@ const financialScoreAccent =
       ? "card-amber"
       : "card-emerald";
 
+        const totalRecords =
+          inflows.length + expenses.length;
+
+        const incomeRecordPercentage =
+          totalRecords > 0
+            ? Math.round(
+                (inflows.length / totalRecords) * 100
+              )
+            : 0;
+
+        const expenseRecordPercentage =
+          totalRecords > 0
+            ? Math.round(
+                (expenses.length / totalRecords) * 100
+              )
+            : 0;
+
   return (
     <main className={`dashboard-shell ${pulling || refreshing ? "pulling" : ""}`} ref={pullTargetRef}>
       <div className={`pull-refresh-indicator ${pulling || refreshing ? "active" : ""}`} aria-hidden={!pulling && !refreshing}><span>↻</span>{refreshing ? "Refreshing live data…" : "Release to refresh"}</div>
@@ -883,13 +902,97 @@ const financialScoreAccent =
           <>
             <SummaryDashboard totals={totals} />
             <FinanceTip />
-            <section className="data-status-grid">
-              <article><strong>{inflows.length}</strong><span>Income records this month</span></article>
-              <article><strong>{expenses.length}</strong><span>Expense records this month</span></article>
-            </section>
+
+            <section
+  className="data-status-grid"
+  aria-label="Monthly record summary"
+>
+  <article className="data-record-card income-record-card">
+    <div className="data-record-glow" aria-hidden="true" />
+
+    <div className="data-record-header">
+      <span
+        className="data-record-icon"
+        aria-hidden="true"
+      >
+        ↓
+      </span>
+
+      <span className="data-record-percentage">
+        {incomeRecordPercentage}%
+      </span>
+    </div>
+
+    <div className="data-record-content">
+      <strong>{inflows.length}</strong>
+
+      <div>
+        <span>Income Records</span>
+        <small>This month</small>
+      </div>
+    </div>
+
+    <div
+      className="data-record-progress"
+      role="progressbar"
+      aria-label="Income records percentage"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={incomeRecordPercentage}
+    >
+      <span
+        style={{
+          width: `${incomeRecordPercentage}%`,
+        }}
+      />
+    </div>
+  </article>
+
+  <article className="data-record-card expense-record-card">
+    <div className="data-record-glow" aria-hidden="true" />
+
+    <div className="data-record-header">
+      <span
+        className="data-record-icon"
+        aria-hidden="true"
+      >
+        ↑
+      </span>
+
+      <span className="data-record-percentage">
+        {expenseRecordPercentage}%
+      </span>
+    </div>
+
+    <div className="data-record-content">
+      <strong>{expenses.length}</strong>
+
+      <div>
+        <span>Expense Records</span>
+        <small>This month</small>
+      </div>
+    </div>
+
+    <div
+      className="data-record-progress"
+      role="progressbar"
+      aria-label="Expense records percentage"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={expenseRecordPercentage}
+    >
+      <span
+        style={{
+          width: `${expenseRecordPercentage}%`,
+        }}
+      />
+    </div>
+  </article>
+</section>
+            
             <TransactionsSection inflows={inflows} expenses={expenses} selectedMonth={selectedMonth} currentMonth={currentMonth} onEditInflow={setInflowModal} onDeleteInflow={setInflowToDelete} onEditExpense={setExpenseModal} onDeleteExpense={setExpenseToDelete} onEditGeneratedExpense={setExpenseModal} onDeleteGeneratedExpense={setExpenseToDelete} onExpenseStatusChange={updateExpenseStatus} statusBusy={statusBusy} />
-          </>
-        )}
+              </>
+            )}
       </section>
       {inflowModal && <InflowModal inflow={inflowModal.id ? inflowModal : null} busy={mutationBusy} onClose={() => setInflowModal(null)} onSave={saveInflow} />}
       {expenseModal && <ExpenseModal expense={expenseModal.id ? expenseModal : null} busy={mutationBusy} onClose={() => setExpenseModal(null)} onSave={saveExpense} />}
@@ -899,13 +1002,14 @@ const financialScoreAccent =
       {recurringEditor && <RecurringTemplateModal template={recurringEditor.id ? recurringEditor : null} busy={mutationBusy} onClose={closeRecurringEditor} onSave={saveRecurringTemplate} />}
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
-      {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
+      {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onCalculator={() => setCalculatorOpen(true)} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
       {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
       {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
       {appLocked && <AppLockScreen onUnlock={unlockApp} />}
+      {calculatorOpen && ( <Calculator onClose={() => setCalculatorOpen(false)} /> )}
 
         {monthPickerOpen && (
   <div

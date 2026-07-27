@@ -9,6 +9,7 @@ function ProfileDrawer({
   onNotifications,
   onRecurring,
   onExportCsv,
+  onCalculator,
   onSettings,
   onToggleTheme,
   onLogout,
@@ -127,6 +128,7 @@ function ProfileDrawer({
           <button type="button" onClick={() => closeDrawer(onNotifications)}><span>🔔</span><div><strong>Notifications</strong><small>View recurring reminders</small></div>{unreadCount > 0 && <b>{unreadCount}</b>}</button>
           <button type="button" onClick={() => closeDrawer(onRecurring)}><span>↻</span><div><strong>Manage Recurring</strong><small>Edit, pause, or add templates</small></div><i>›</i></button>
           <button type="button" onClick={() => closeDrawer(onExportCsv)}><span>📄</span><div><strong>Export CSV</strong><small>Download the selected month</small></div><i>↓</i></button>
+          <button type="button" onClick={() => closeDrawer(onCalculator)}><span>🧮</span><div><strong>Calculator</strong><small>Quick budget calculations</small></div><i>›</i></button>
           <button type="button" onClick={() => closeDrawer(onSettings)}><span>⚙️</span><div><strong>Settings</strong><small>Account and preferences</small></div><i>›</i></button>
           <button type="button" onClick={onToggleTheme}><span>{theme === "dark" ? "☀️" : "🌙"}</span><div><strong>{theme === "dark" ? "Light Mode" : "Dark Mode"}</strong><small>Change app appearance</small></div><i>›</i></button>
         </nav>
