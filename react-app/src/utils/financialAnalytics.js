@@ -201,6 +201,23 @@ const CATEGORY_RULES = [
       "beauty",
     ],
   },
+
+  {
+    category: "Money Transfer",
+    icon: "💸",
+    keywords: [
+      "sent to",
+      "gcash",
+      "sendwave",
+      "remitly",
+      "BPI",
+      "BDO",
+      "FCB",
+      "transfer",
+      "padala",
+    ],
+  },
+
   {
     category: "Entertainment",
     icon: "🎬",
