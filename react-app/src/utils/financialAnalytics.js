@@ -13,6 +13,8 @@ const CATEGORY_RULES = [
       "food 4 less",
       "grocery",
       "market",
+      "seafood city",
+      "filipino depot"
     ],
   },
   {
@@ -29,6 +31,7 @@ const CATEGORY_RULES = [
       "grubhub",
       "pizza",
       "cafe",
+      "mcdo",
     ],
   },
   {
@@ -44,6 +47,25 @@ const CATEGORY_RULES = [
       "at&t",
       "phone bill",
       "utility",
+      "sdg&e",
+      "water",
+      "primo",
+      
+    ],
+  },
+  {
+    category: "Credit Cards",
+    icon: "💳",
+    keywords: [
+      "apple card",
+      "first premiere",
+      "capital one",
+      "synchrony",
+      "best buy",
+      "bank loan",
+      "frontwave",
+      "loan",
+      "mission lane"
     ],
   },
   {
@@ -80,7 +102,8 @@ const CATEGORY_RULES = [
       "toyota financial",
       "ford credit",
       "capital one auto",
-          ],
+      "car insurance"
+    ],
   },
   {
     category: "Housing",
@@ -91,6 +114,7 @@ const CATEGORY_RULES = [
       "hoa",
       "property tax",
       "home insurance",
+      "house",
     ],
   },
   {
@@ -105,6 +129,9 @@ const CATEGORY_RULES = [
       "apple music",
       "icloud",
       "subscription",
+      "prime",
+      "prime video",
+      "annual renewal",
     ],
   },
   {
@@ -119,6 +146,7 @@ const CATEGORY_RULES = [
       "hospital",
       "medical",
       "health",
+      "kaiser"
     ],
   },
   {
@@ -132,6 +160,12 @@ const CATEGORY_RULES = [
       "shopping",
       "clothing",
       "clothes",
+      "adidas",
+      "victoria's secret",
+      "victoria secret",
+      "macy's",
+      "bath & body",
+
     ],
   },
   {
@@ -143,6 +177,15 @@ const CATEGORY_RULES = [
       "course",
       "books",
       "udemy",
+    ],
+  },
+
+  {
+    category: "Beauty",
+    icon: "💄",
+    keywords: [
+      "ulta",
+      "beauty",
     ],
   },
   {
