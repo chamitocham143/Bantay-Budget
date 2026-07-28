@@ -17,6 +17,16 @@ const CATEGORY_RULES = [
       "filipino depot"
     ],
   },
+
+  {
+    category: "Snacks",
+    icon: "🍿",
+    keywords: [
+      "nayax",
+      "3 groom",
+      "vending",
+    ],
+  },
   {
     category: "Dining",
     icon: "🍽️",
@@ -34,7 +44,7 @@ const CATEGORY_RULES = [
       "mcdo",
       "buffet",
       "bbq",
-      "seafood"
+      "seafood",
     ],
   },
   {
