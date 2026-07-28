@@ -7,6 +7,8 @@ const CATEGORY_RULES = [
       "costco",
       "aldi",
       "ralphs",
+      "albertsons",
+      "albertson",
       "vons",
       "trader joe",
       "seafood city",
