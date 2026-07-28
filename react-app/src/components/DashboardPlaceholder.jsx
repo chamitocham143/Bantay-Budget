@@ -114,7 +114,7 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const currentMonth = getLocalMonthString();
   const [selectedYear, selectedMonthNumber] = selectedMonth.split("-");
   const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
-  const { targetRef: pullTargetRef, pulling, refreshing } = usePullToRefresh();
+  const { targetRef: pullTargetRef, pulling, refreshing, } = usePullToRefresh(Boolean(analyticsMetric));
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
 
   const saveInflow = async (values) => {

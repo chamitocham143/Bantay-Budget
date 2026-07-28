@@ -263,6 +263,7 @@ function FinancialAnalytics({
     };
   }, [onClose]);
 
+
   return (
     <section
       className="financial-analytics-page"
@@ -552,6 +553,78 @@ function FinancialAnalytics({
             </div>
           )}
         </section>
+        <section className="analytics-category-card">
+  <header className="analytics-section-header">
+    <div>
+      <span className="analytics-eyebrow">
+        Spending categories
+      </span>
+
+      <h2>Where your money went</h2>
+    </div>
+
+    <span>{currentMonth.label}</span>
+  </header>
+
+  {currentMonth.categoryBreakdown?.length > 0 ? (
+    <div className="analytics-category-list">
+      {currentMonth.categoryBreakdown.map(
+        (category) => (
+          <article
+            className="analytics-category-item"
+            key={category.name}
+          >
+            <div className="analytics-category-icon">
+              {category.icon}
+            </div>
+
+            <div className="analytics-category-content">
+              <div className="analytics-category-heading">
+                <div>
+                  <strong>{category.name}</strong>
+
+                  <small>
+                    {category.count}{" "}
+                    {category.count === 1
+                      ? "expense"
+                      : "expenses"}
+                  </small>
+                </div>
+
+                <div className="analytics-category-value">
+                  <strong>
+                    {formatCurrency(category.amount)}
+                  </strong>
+
+                  <small>
+                    {category.percentage.toFixed(1)}%
+                  </small>
+                </div>
+              </div>
+
+              <div className="analytics-category-track">
+                <span
+                  style={{
+                    width: `${category.percentage.toFixed(1)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          </article>
+        )
+      )}
+    </div>
+  ) : (
+    <div className="analytics-category-empty">
+      <span aria-hidden="true">🧾</span>
+      <h3>No paid expenses</h3>
+      <p>
+        Categories will appear after an expense is
+        marked as paid.
+      </p>
+    </div>
+  )}
+</section>
       </main>
     </section>
   );

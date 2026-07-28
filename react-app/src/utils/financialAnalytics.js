@@ -1,3 +1,187 @@
+const CATEGORY_RULES = [
+  {
+    category: "Groceries",
+    icon: "🛒",
+    keywords: [
+      "walmart",
+      "costco",
+      "aldi",
+      "ralphs",
+      "vons",
+      "trader joe",
+      "seafood city",
+      "food 4 less",
+      "grocery",
+      "market",
+    ],
+  },
+  {
+    category: "Dining",
+    icon: "🍽️",
+    keywords: [
+      "mcdonald",
+      "jollibee",
+      "starbucks",
+      "restaurant",
+      "doordash",
+      "uber eats",
+      "ubereats",
+      "grubhub",
+      "pizza",
+      "cafe",
+    ],
+  },
+  {
+    category: "Utilities",
+    icon: "💡",
+    keywords: [
+      "sdge",
+      "electric",
+      "water bill",
+      "internet",
+      "spectrum",
+      "verizon",
+      "at&t",
+      "phone bill",
+      "utility",
+    ],
+  },
+  {
+    category: "Transportation",
+    icon: "🚗",
+    keywords: [
+      "shell",
+      "chevron",
+      "arco",
+      "mobil",
+      "uber",
+      "lyft",
+      "parking",
+      "car wash",
+      "auto repair",
+      "dmv",
+      "car payment",
+      "toyota",
+      "honda",
+      "rivian",
+      "tesla",
+      "mazda",
+      "ford",
+      "chevrole",
+      "hyundai",
+      "kia",
+      "acura",
+      "lexus",
+      "scion",
+      "bmw",
+      "mercedes benz",
+      "car",
+      "honda financial",
+      "toyota financial",
+      "ford credit",
+      "capital one auto",
+          ],
+  },
+  {
+    category: "Housing",
+    icon: "🏠",
+    keywords: [
+      "rent",
+      "mortgage",
+      "hoa",
+      "property tax",
+      "home insurance",
+    ],
+  },
+  {
+    category: "Subscriptions",
+    icon: "▶️",
+    keywords: [
+      "netflix",
+      "spotify",
+      "disney",
+      "hulu",
+      "youtube premium",
+      "apple music",
+      "icloud",
+      "subscription",
+    ],
+  },
+  {
+    category: "Health",
+    icon: "💊",
+    keywords: [
+      "cvs",
+      "walgreens",
+      "pharmacy",
+      "doctor",
+      "dental",
+      "hospital",
+      "medical",
+      "health",
+    ],
+  },
+  {
+    category: "Shopping",
+    icon: "🛍️",
+    keywords: [
+      "amazon",
+      "ebay",
+      "best buy",
+      "nike",
+      "shopping",
+      "clothing",
+      "clothes",
+    ],
+  },
+  {
+    category: "Education",
+    icon: "🎓",
+    keywords: [
+      "school",
+      "tuition",
+      "course",
+      "books",
+      "udemy",
+    ],
+  },
+  {
+    category: "Entertainment",
+    icon: "🎬",
+    keywords: [
+      "cinema",
+      "movie",
+      "theater",
+      "concert",
+      "amusement",
+      "game",
+    ],
+  },
+];
+
+export function inferExpenseCategory(description = "") {
+  const normalizedDescription = String(description)
+    .trim()
+    .toLowerCase();
+
+  const matchingRule = CATEGORY_RULES.find(
+    ({ keywords }) =>
+      keywords.some((keyword) =>
+        normalizedDescription.includes(keyword)
+      )
+  );
+
+  return matchingRule
+    ? {
+        name: matchingRule.category,
+        icon: matchingRule.icon,
+      }
+    : {
+        name: "Other",
+        icon: "📦",
+      };
+}
+
 function getInflowMonth(inflow) {
   return (
     inflow.date?.slice(0, 7) ||
@@ -76,6 +260,54 @@ export function calculateAnalyticsMonth(
   return String(relevantDate || "").slice(0, 7) === month;
 });
 
+const paidExpenses = monthlyExpenses.filter(
+  (expense) => expense.status === "PAID"
+);
+
+const categoryMap = paidExpenses.reduce(
+  (categories, expense) => {
+    const category = inferExpenseCategory(
+      expense.desc
+    );
+
+    if (!categories[category.name]) {
+      categories[category.name] = {
+        name: category.name,
+        icon: category.icon,
+        amount: 0,
+        count: 0,
+      };
+    }
+
+    categories[category.name].amount +=
+      Number(expense.amount) || 0;
+
+    categories[category.name].count += 1;
+
+    return categories;
+  },
+  {}
+);
+
+const categoryTotal = Object.values(
+  categoryMap
+).reduce(
+  (total, category) => total + category.amount,
+  0
+);
+
+const categoryBreakdown = Object.values(
+  categoryMap
+)
+  .map((category) => ({
+    ...category,
+    percentage:
+      categoryTotal > 0
+        ? (category.amount / categoryTotal) * 100
+        : 0,
+  }))
+  .sort((a, b) => b.amount - a.amount);
+
   const income = monthlyInflows.reduce(
   (total, item) => total + (Number(item.amount) || 0),
   0
@@ -142,6 +374,7 @@ export function calculateAnalyticsMonth(
     remainingRate,
     inflowCount: monthlyInflows.length,
     expenseCount: monthlyExpenses.length,
+    categoryBreakdown,
   };
 }
 
