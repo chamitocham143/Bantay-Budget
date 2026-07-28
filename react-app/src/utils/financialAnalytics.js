@@ -32,6 +32,9 @@ const CATEGORY_RULES = [
       "pizza",
       "cafe",
       "mcdo",
+      "buffet",
+      "bbq",
+      "seafood"
     ],
   },
   {
