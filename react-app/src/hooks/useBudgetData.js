@@ -114,11 +114,17 @@ export function useBudgetData(uid, selectedMonth) {
     return { inflowTotal, ...expenseTotals, allocable, available };
   }, [filteredInflows, filteredExpenses]);
 
-  return {
-    inflows: filteredInflows,
-    expenses: filteredExpenses,
-    totals,
-    loading: !loaded.inflows || !loaded.expenses,
-    error,
-  };
+ return {
+  inflows: filteredInflows,
+  expenses: filteredExpenses,
+
+  // Complete history for Analytics
+  allInflows: inflows,
+  allExpenses: expenses,
+
+  totals,
+  loading: !loaded.inflows || !loaded.expenses,
+  error,
+};
+
 }

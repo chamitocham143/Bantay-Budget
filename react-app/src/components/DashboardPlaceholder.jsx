@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { addDoc, collection, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import SummaryDashboard, { formatCurrency } from "./SummaryDashboard.jsx";
 import TransactionsSection from "./TransactionsSection.jsx";
@@ -25,8 +25,9 @@ import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
 import { sendTestPush } from "../services/developerTools.js";
 import BottomActionBar from "./BottomActionBar";
-import Calculator from "./Calculator.jsx";
-import { useMemo } from "react";
+import Calculator from "./Calculator.jsx";  
+import FinancialAnalytics from "./FinancialAnalytics.jsx";
+import { buildAnalyticsSeries, } from "../utils/financialAnalytics.js";
 
 const MONTH_OPTIONS = [
   "January", "February", "March", "April", "May", "June",
@@ -87,11 +88,20 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const [testPushBusy, setTestPushBusy] = useState(false);
   const [testPushMessage, setTestPushMessage] = useState(null);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
+  const [analyticsMetric, setAnalyticsMetric] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
-  const { inflows, expenses, totals, loading, error } = useBudgetData(
-    user.uid,
-    selectedMonth,
-  );
+  const {
+  inflows,
+  expenses,
+  allInflows,
+  allExpenses,
+  totals,
+  loading,
+  error,
+} = useBudgetData(
+  user.uid,
+  selectedMonth
+);
 
   const previousMonth = getPreviousMonth(selectedMonth);
   const {
@@ -376,6 +386,21 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
     year: "numeric",
   }).format(new Date(Number(year), Number(month) - 1, 1));
 };
+
+const analyticsSeries = useMemo(
+  () =>
+    buildAnalyticsSeries({
+      anchorMonth: selectedMonth,
+      allInflows,
+      allExpenses,
+      count: 6,
+    }),
+  [
+    selectedMonth,
+    allInflows,
+    allExpenses,
+  ]
+);
 
 // Getting Previous Month Value //
 
@@ -900,7 +925,24 @@ const financialScoreAccent =
           </section>
         ) : (
           <>
-            <SummaryDashboard totals={totals} />
+           
+<SummaryDashboard
+  totals={totals}
+  onOpenAnalysis={(metric) => {
+    setAnalyticsMetric(metric);
+  }}
+/>
+
+{analyticsMetric && (
+  <FinancialAnalytics
+    metric={analyticsMetric}
+    series={analyticsSeries}
+    selectedMonth={selectedMonth}
+    onClose={() => setAnalyticsMetric(null)}
+  />
+)}
+
+
             <FinanceTip />
 
             <section
@@ -1010,14 +1052,34 @@ const financialScoreAccent =
       {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
       {appLocked && <AppLockScreen onUnlock={unlockApp} />}
       {calculatorOpen && ( <Calculator onClose={() => setCalculatorOpen(false)} /> )}
-
-        {monthPickerOpen && (
+      {monthPickerOpen && (<div className="month-picker-overlay" role="presentation" onClick={() => setMonthPickerOpen(false)}>
+      
+            {analyticsMetric && (
   <div
-    className="month-picker-overlay"
-    role="presentation"
-    onClick={() => setMonthPickerOpen(false)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 99999,
+      display: "grid",
+      placeItems: "center",
+      color: "white",
+      background: "#002c24",
+    }}
   >
-    <section
+    Analytics opened: {analyticsMetric}
+  </div>
+)}
+
+      {analyticsMetric !== null && (
+  <FinancialAnalytics
+    metric={analyticsMetric}
+    series={analyticsSeries}
+    selectedMonth={selectedMonth}
+    onClose={() => setAnalyticsMetric(null)}
+  />
+)}
+
+<section
       className="month-picker-sheet"
       role="dialog"
       aria-modal="true"

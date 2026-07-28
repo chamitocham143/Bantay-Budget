@@ -6,7 +6,7 @@ import {
 } from "react";
 
 export const APP_LOCK_KEY = "appLockEnabled";
-export const APP_LOCK_DELAY = 1 * 60 * 1000;
+export const APP_LOCK_DELAY = 3 * 60 * 1000;
 
 export function useInactivityLock(enabled) {
   const [locked, setLocked] = useState(false);

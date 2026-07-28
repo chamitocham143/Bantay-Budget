@@ -282,6 +282,7 @@ function FeaturedCard({
   totals,
   infoOpen,
   onInfoToggle,
+  onOpenAnalysis,
 }) {
   const percentage = getCardPercentage(card.key, totals);
   const animatedPercentage = useAnimatedPercentage(percentage, 1100);
@@ -321,13 +322,27 @@ function FeaturedCard({
         <span />
       </div>
 
-      <div className="premium-card-footer">
-        <span>Monthly overview</span>
+      <button
+          className="premium-card-footer"
+          type="button"
+          
+          onClick={(event) => {
+          event.stopPropagation();
 
-        <span className="premium-card-arrow" aria-hidden="true">
-          →
-        </span>
-      </div>
+          onOpenAnalysis();
+        }}
+          
+        >
+          <span>View Analysis</span>
+
+          <span
+            className="premium-card-arrow"
+            aria-hidden="true"
+          >
+            →
+          </span>
+        </button>
+
     </article>
   );
 }
@@ -386,7 +401,7 @@ function FeaturedCard({
   );
 }
 
-function SummaryDashboard({ totals }) {
+function SummaryDashboard({ totals, onOpenAnalysis, }) {
   const [openInfoKey, setOpenInfoKey] = useState(null);
 
   const featuredCards = summaryCards.filter(
@@ -449,6 +464,9 @@ function SummaryDashboard({ totals }) {
                   : card.key
               );
             }}
+            onOpenAnalysis={() =>
+              onOpenAnalysis?.(card.key)
+            }
           />
         ))}
       </section>
