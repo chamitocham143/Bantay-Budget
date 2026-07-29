@@ -493,16 +493,85 @@ const timelineTransactions = useMemo(() => {
   );
 }, [displayedInflows, displayedExpenses]);
 
-const visibleTransactions = useMemo(() => {
-  if (showAllTransactions) {
-    return timelineTransactions;
-  }
+const balanceByRowId = useMemo(() => {
+  const completeMonthlyLedger = [
+    ...inflows.map((item) => ({
+      ...item,
+      type: "INFLOW",
+    })),
 
-  return timelineTransactions.slice(0, 5);
-}, [timelineTransactions, showAllTransactions]);
+    ...expenses.map((item) => ({
+      ...item,
+      type: "EXPENSE",
+    })),
+  ].sort((a, b) => {
+    const dateComparison = String(
+      getTransactionDate(a)
+    ).localeCompare(
+      String(getTransactionDate(b))
+    );
+
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+
+    return (
+      Number(a.created || 0) -
+      Number(b.created || 0)
+    );
+  });
+
+  let runningBalance = 0;
+  const balances = new Map();
+
+  completeMonthlyLedger.forEach((transaction) => {
+    const amount = Number(transaction.amount) || 0;
+
+    if (transaction.type === "INFLOW") {
+      runningBalance += amount;
+    } else if (transaction.status !== "ON HOLD") {
+      runningBalance -= amount;
+    }
+
+    const rowId =
+      `${transaction.type}-${transaction.id}`;
+
+    balances.set(rowId, runningBalance);
+  });
+
+  return balances;
+}, [inflows, expenses]);
+
+const transactionsWithBalance = useMemo(() => {
+  return timelineTransactions.map((transaction) => {
+    const rowId =
+      `${transaction.type}-${transaction.id}`;
+
+    return {
+      ...transaction,
+      runningBalance:
+        balanceByRowId.get(rowId) ?? 0,
+    };
+  });
+}, [timelineTransactions, balanceByRowId]);
 
 const hasAdditionalTransactions =
-  timelineTransactions.length > 5;
+  transactionsWithBalance.length > 5;
+
+  {showAllTransactions
+  ? "Show Less"
+  : `See All ${transactionsWithBalance.length} Transactions`}
+
+const visibleTransactions = useMemo(() => {
+  if (showAllTransactions) {
+    return transactionsWithBalance;
+  }
+
+  return transactionsWithBalance.slice(0, 5);
+}, [
+  transactionsWithBalance,
+  showAllTransactions,
+]);
 
 const groupedTransactions = useMemo(() => {
   return visibleTransactions.reduce(
@@ -523,7 +592,7 @@ const groupedTransactions = useMemo(() => {
 }, [visibleTransactions]);
 
 
-  const isEmpty = timelineTransactions.length === 0;
+  const isEmpty = transactionsWithBalance.length === 0;
 
   return (
     <section
@@ -709,6 +778,24 @@ const groupedTransactions = useMemo(() => {
                         {isInflow ? "+" : "-"}
                         {formatCurrency(transaction.amount)}
                       </strong>
+                      
+                      <div className="transaction-running-balance">
+  <span>
+    {transaction.status === "ON HOLD"
+      ? "Balance · unchanged"
+      : "Balance"}
+  </span>
+
+  <strong
+    className={
+      transaction.runningBalance < 0
+        ? "negative"
+        : ""
+    }
+  >
+    {formatCurrency(transaction.runningBalance)}
+  </strong>
+</div>
 
                     </div>
                   </article>

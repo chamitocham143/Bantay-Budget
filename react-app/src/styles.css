@@ -5643,3 +5643,29 @@ button.premium-card-footer {
     font-size: 13px;
   }
 }
+
+.transaction-running-balance {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.transaction-running-balance span {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.transaction-running-balance strong {
+  color: var(--primary-light);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.transaction-running-balance strong.negative {
+  color: var(--danger);
+}
