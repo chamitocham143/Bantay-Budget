@@ -29,6 +29,16 @@ const CATEGORY_RULES = [
       "vending",
     ],
   },
+
+  {
+    category: "Personal Loan",
+    icon: "💵",
+    keywords: [
+      "one main",
+      "financial",
+      "bank loan",
+    ],
+  },
   {
     category: "Dining",
     icon: "🍽️",
@@ -77,7 +87,6 @@ const CATEGORY_RULES = [
       "capital one",
       "synchrony",
       "best buy",
-      "bank loan",
       "frontwave",
       "loan",
       "mission lane"
@@ -161,7 +170,8 @@ const CATEGORY_RULES = [
       "hospital",
       "medical",
       "health",
-      "kaiser"
+      "kaiser",
+      "vons",
     ],
   },
   {
@@ -169,6 +179,9 @@ const CATEGORY_RULES = [
     icon: "🛍️",
     keywords: [
       "amazon",
+      "shoes",
+      "sandals",
+      "alo",
       "ebay",
       "best buy",
       "nike",
