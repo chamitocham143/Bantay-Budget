@@ -691,8 +691,15 @@ const getMonthOptions = () => {
   const currentYear = current.getFullYear();
   const currentMonthIndex = current.getMonth();
 
-  for (let index = 0; index < 24; index += 1) {
-    const date = new Date(currentYear, currentMonthIndex - index, 1);
+  // -1 includes the next month.
+  // 0 is the current month.
+  // Positive numbers are previous months.
+  for (let index = -1; index < 24; index += 1) {
+    const date = new Date(
+      currentYear,
+      currentMonthIndex - index,
+      1
+    );
 
     const value = `${date.getFullYear()}-${String(
       date.getMonth() + 1

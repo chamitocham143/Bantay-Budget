@@ -23,9 +23,28 @@ if (!serviceWorker.includes("onBackgroundMessage") || !serviceWorker.includes("s
   throw new Error("Combined messaging/offline service worker validation failed.");
 }
 
-const recurringSource = await readFile(resolve("src/hooks/useRecurringExpenses.js"), "utf8");
-if (!recurringSource.includes("${template.id}_${year}_${month}") || !recurringSource.includes('status: "ON HOLD"')) {
-  throw new Error("Recurring generation invariants are missing.");
+const recurringSource = await readFile(
+  resolve("src/hooks/useRecurringExpenses.js"),
+  "utf8"
+);
+
+const recurringInvariants = [
+  "getGenerationCandidate",
+  "generationDate.getDate() - 5",
+  "`${template.id}_${candidate.year}_${candidate.month}`",
+  "dueDate: candidate.dueDate",
+  'status: "ON HOLD"',
+  "existingExpense.exists()",
+];
+
+if (
+  !recurringInvariants.every((invariant) =>
+    recurringSource.includes(invariant)
+  )
+) {
+  throw new Error(
+    "Advance recurring generation invariants are missing."
+  );
 }
 
 const lockSource = await readFile(resolve("src/hooks/useInactivityLock.js"), "utf8");
