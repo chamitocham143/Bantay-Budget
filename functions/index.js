@@ -84,20 +84,22 @@ async function cleanupOldNotifications(uid) {
 exports.dailyReminder = onSchedule(
   {
     schedule: "every day 08:00",
-    //schedule: "every 5 minutes",
     timeZone: "America/Los_Angeles",
   },
   async () => {
     logger.info("Daily reminder function executed!");
 
-    const usersSnapshot = await db.collection("users").get();
+    const usersSnapshot = await db
+      .collection("users")
+      .get();
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     for (const userDoc of usersSnapshot.docs) {
       const uid = userDoc.id;
-       await cleanupOldNotifications(uid);
+
+      await cleanupOldNotifications(uid);
 
       const recurringSnapshot = await db
         .collection("users")
@@ -106,76 +108,141 @@ exports.dailyReminder = onSchedule(
         .where("active", "==", true)
         .get();
 
-      for (const recurringDoc of recurringSnapshot.docs) {
+      for (
+        const recurringDoc of recurringSnapshot.docs
+      ) {
         const recurring = recurringDoc.data();
 
-        let dueDay = Number(recurring.recurringDay);
-        if (!dueDay) continue;
+        let dueDay = Number(
+          recurring.recurringDay
+        );
 
-        const year = today.getFullYear();
-        const month = today.getMonth();
-
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-        if (dueDay > daysInMonth) {
-          dueDay = daysInMonth;
+        if (!dueDay) {
+          continue;
         }
 
-        const dueDate = new Date(year, month, dueDay);
+        const year = today.getFullYear();
+        const monthIndex = today.getMonth();
+
+        const month = String(
+          monthIndex + 1
+        ).padStart(2, "0");
+
+        const daysInMonth = new Date(
+          year,
+          monthIndex + 1,
+          0
+        ).getDate();
+
+        dueDay = Math.min(
+          dueDay,
+          daysInMonth
+        );
+
+        const dueDate = new Date(
+          year,
+          monthIndex,
+          dueDay
+        );
+
         dueDate.setHours(0, 0, 0, 0);
 
         const diffDays = Math.ceil(
-          (dueDate - today) / (1000 * 60 * 60 * 24)
+          (dueDate.getTime() - today.getTime()) /
+            (1000 * 60 * 60 * 24)
         );
 
-        if (diffDays < 0 || diffDays > 3) continue;
+        // Only process the three-day reminder window.
+        if (diffDays < 0 || diffDays > 3) {
+          continue;
+        }
 
-const dueDateString =
-  dueDate.toISOString().slice(0, 10);
+        const dueDateString =
+          `${year}-${month}-${String(
+            dueDay
+          ).padStart(2, "0")}`;
 
-const expenseQuery = await db
-  .collection("users")
-  .doc(uid)
-  .collection("expenses")
-  .where("recurringTemplateId", "==", recurringDoc.id)
-  .get();
+        /*
+         * This matches the duplicate-safe ID created
+         * by useRecurringExpenses:
+         *
+         * templateId_2026_08
+         */
+        const expenseId =
+          `${recurringDoc.id}_${year}_${month}`;
 
-const currentMonth =
-  `${year}-${String(month + 1).padStart(2, "0")}`;
+        const expenseRef = db
+          .collection("users")
+          .doc(uid)
+          .collection("expenses")
+          .doc(expenseId);
 
-const expenseDoc = expenseQuery.docs.find(doc => {
-  const expense = doc.data();
+        const expenseSnapshot =
+          await expenseRef.get();
 
-  return (
-    expense.date &&
-    expense.date.startsWith(currentMonth)
-  );
-});
+        if (!expenseSnapshot.exists) {
+          logger.info(
+            `Skipping ${uid}: generated expense ` +
+            `${expenseId} was not found`
+          );
 
-if (!expenseDoc) {
-  logger.info(
-    `Skipping notification for ${uid}: no expense found for ${recurring.desc} with template ${recurringDoc.id} on ${dueDateString}`
-  );
+          continue;
+        }
 
-  expenseQuery.docs.forEach(doc => {
-    const expense = doc.data();
+        const expense = expenseSnapshot.data();
 
-  });
+        if (
+          !expense.recurring ||
+          expense.recurringTemplateId !==
+            recurringDoc.id
+        ) {
+          logger.warn(
+            `Skipping ${uid}: ${expenseId} is not ` +
+            "the expected recurring expense"
+          );
 
-  continue;
-}
+          continue;
+        }
 
-const expense = expenseDoc.data();
+        let expenseStatus = expense.status;
 
-if (expense.status !== "PENDING") {
-  logger.info(
-    `Skipping notification for ${uid}: ${recurring.desc} is ${expense.status}`
-  );
-  continue;
-}
+        /*
+         * Automatically activate the expense when its
+         * due date enters the three-day window.
+         */
+        if (expenseStatus === "ON HOLD") {
+          await expenseRef.update({
+            status: "PENDING",
+            statusUpdatedAt: Date.now(),
+            statusUpdatedBy: "dailyReminder",
+          });
 
-        const notificationId =
-          `${recurringDoc.id}_${year}_${month + 1}_${dueDay}`;
+          expenseStatus = "PENDING";
+
+          logger.info(
+            `Changed ${expenseId} from ON HOLD ` +
+            `to PENDING for ${uid}`
+          );
+        }
+
+        // Never notify an expense already paid.
+        if (expenseStatus === "PAID") {
+          logger.info(
+            `Skipping notification for ${uid}: ` +
+            `${recurring.desc} is PAID`
+          );
+
+          continue;
+        }
+
+        if (expenseStatus !== "PENDING") {
+          logger.info(
+            `Skipping notification for ${uid}: ` +
+            `${recurring.desc} is ${expenseStatus}`
+          );
+
+          continue;
+        }
 
         let dueText = "";
 
@@ -184,48 +251,64 @@ if (expense.status !== "PENDING") {
         } else if (diffDays === 1) {
           dueText = "Payment due tomorrow";
         } else {
-          dueText = `Payment due in ${diffDays} days`;
+          dueText =
+            `Payment due in ${diffDays} days`;
         }
 
-        message = `${dueText}`;
+        const message = dueText;
 
-       const notificationRef = db
-  .collection("users")
-  .doc(uid)
-  .collection("notifications")
-  .doc(notificationId);
+        // Keep the existing notification ID format
+        // so previously created reminders do not duplicate.
+        const notificationId =
+          `${recurringDoc.id}_${year}_` +
+          `${monthIndex + 1}_${dueDay}`;
 
-const existingNotification =
-  await notificationRef.get();
+        const notificationRef = db
+          .collection("users")
+          .doc(uid)
+          .collection("notifications")
+          .doc(notificationId);
 
-if (existingNotification.exists) {
-  logger.info(
-    `Notification already exists for ${uid}: ${notificationId}`
-  );
-  continue;
-}
+        const existingNotification =
+          await notificationRef.get();
 
-await notificationRef.set(  
-            {
-              type: "RECURRING_DUE",
-              title: "Upcoming recurring due",
-              message,
-              desc: recurring.desc,
-              amount: Number(recurring.amount),
-              recurringDay: dueDay,
-              dueDate: dueDate.toISOString().slice(0, 10),
-              read: false,
-              created: Date.now(),
-            },
-            { merge: true }
+        if (existingNotification.exists) {
+          logger.info(
+            `Notification already exists for ` +
+            `${uid}: ${notificationId}`
           );
 
-       await sendPushToUserDevices(
-  uid,
-  `Reminder 🔔`,
-  `${recurring.desc} • ${message} • $${Number(recurring.amount).toFixed(2)}`
-);
-        logger.info(`Notification created for ${uid}: ${message}`);
+          continue;
+        }
+
+        await notificationRef.set(
+          {
+            type: "RECURRING_DUE",
+            title: "Upcoming recurring due",
+            message,
+            desc: recurring.desc,
+            amount: Number(recurring.amount),
+            recurringDay: dueDay,
+            dueDate: dueDateString,
+            read: false,
+            created: Date.now(),
+          },
+          {
+            merge: true,
+          }
+        );
+
+        await sendPushToUserDevices(
+          uid,
+          "Reminder 🔔",
+          `${recurring.desc} • ${message} • ` +
+            `$${Number(recurring.amount).toFixed(2)}`
+        );
+
+        logger.info(
+          `Notification created for ${uid}: ` +
+          message
+        );
       }
     }
 
