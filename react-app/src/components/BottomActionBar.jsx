@@ -41,7 +41,7 @@ export default function BottomActionBar({
           ↻
         </span>
 
-        <span>Recurring</span>
+        <span>+ Add Recurring</span>
       </button>
     </div>
   );

@@ -108,6 +108,7 @@ function getTransactionIcon(transaction) {
     text.includes("albertsons") ||
     text.includes("walmart") ||
     text.includes("restaurant") ||
+    text.includes("filipino depot") ||
     text.includes("grocery") ||
     text.includes("costco")
   ) {
@@ -118,6 +119,8 @@ function getTransactionIcon(transaction) {
     text.includes("phone") ||
     text.includes("verizon") ||
     text.includes("internet") ||
+    text.includes("iphone") ||
+    text.includes("samsung") ||
     text.includes("electric")
   ) {
     return "📱";
@@ -137,6 +140,7 @@ function getTransactionIcon(transaction) {
    if (
     text.includes("mcdo") ||
     text.includes("jollibee") ||
+    text.includes("in-in-out") ||
     text.includes("burger")
   ) {
     return "🍔";
@@ -148,6 +152,18 @@ function getTransactionIcon(transaction) {
     return "🥤";
   }
 
+   if (
+    text.includes("kaiser")
+  ) {
+    return "🏥";
+  }
+
+   if (
+    text.includes("primo")
+  ) {
+    return "💦";
+  }
+
   if (
     text.includes("buffet")
   ) {
@@ -155,8 +171,23 @@ function getTransactionIcon(transaction) {
   }
 
   if (
+    text.includes("groom mom") ||
+    text.includes("grom") ||
+    text.includes("nayax")
+  ) {
+    return "🍫";
+  }
+
+  if (
     text.includes("carwash") ||
+    text.includes("car") ||
+    text.includes("honda") ||
+    text.includes("toyota") ||
+    text.includes("tesla") ||
+    text.includes("rivian") ||
+    text.includes("benz") ||
     text.includes("car wash")
+    
   ) {
     return "🚘";
   }
@@ -165,6 +196,7 @@ function getTransactionIcon(transaction) {
     text.includes("adidas") ||
     text.includes("puma") ||
     text.includes("jordan") ||
+    text.includes("shoes") ||
     text.includes("nike")
   ) {
     return "👟";
@@ -175,6 +207,12 @@ function getTransactionIcon(transaction) {
     text.includes("salon")
   ) {
     return "💇‍♂️";
+  }
+
+   if (
+    text.includes("sent to")
+  ) {
+    return "💸";
   }
 
   if (

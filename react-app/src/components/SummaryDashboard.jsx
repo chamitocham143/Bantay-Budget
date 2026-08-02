@@ -60,24 +60,6 @@ const summaryCards = [
     accent: "emerald",
   },
   {
-    key: "inflowTotal",
-    label: "Total Income",
-    note: "All income received",
-    info:
-      "The total income recorded for the selected month. All summary percentages are compared with this amount.",
-    icon: "💰",
-    accent: "green",
-  },
-  {
-    key: "paidTotal",
-    label: "Total Paid",
-    note: "All paid expenses",
-    info:
-      "The total amount of expenses marked Paid for the selected month. Paid expenses are deducted from your income.",
-    icon: "✅",
-    accent: "teal",
-  },
-  {
     key: "onHoldTotal",
     label: "Total On Hold",
     note: "Temporarily set aside",
@@ -94,6 +76,24 @@ const summaryCards = [
       "The amount available for allocation after paid expenses are deducted. Pending payments have not yet been deducted from this amount.",
     icon: "💵",
     accent: "blue",
+  },
+  {
+    key: "inflowTotal",
+    label: "Total Income",
+    note: "All income received",
+    info:
+      "The total income recorded for the selected month. All summary percentages are compared with this amount.",
+    icon: "💰",
+    accent: "green",
+  },
+  {
+    key: "paidTotal",
+    label: "Total Paid",
+    note: "All paid expenses",
+    info:
+      "The total amount of expenses marked Paid for the selected month. Paid expenses are deducted from your income.",
+    icon: "✅",
+    accent: "teal",
   },
 ];
 
