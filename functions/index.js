@@ -1,12 +1,123 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { logger } = require("firebase-functions");
+const {
+  onCall,
+  HttpsError,
+} = require("firebase-functions/v2/https");
+
+const {
+  onSchedule,
+} = require("firebase-functions/v2/scheduler");
+
+const {
+  logger,
+} = require("firebase-functions");
+
 const admin = require("firebase-admin");
 
 admin.initializeApp();
+
 const db = admin.firestore();
 
-async function sendPushToUserDevices(uid, title, body) {
+const MILLISECONDS_PER_DAY =
+  24 * 60 * 60 * 1000;
+
+/* =========================================================
+   DATE HELPERS
+========================================================= */
+
+function buildDueDetails(
+  year,
+  monthIndex,
+  requestedDueDay
+) {
+  const daysInMonth = new Date(
+    year,
+    monthIndex + 1,
+    0
+  ).getDate();
+
+  const dueDay = Math.min(
+    requestedDueDay,
+    daysInMonth
+  );
+
+  const dueDate = new Date(
+    year,
+    monthIndex,
+    dueDay
+  );
+
+  dueDate.setHours(0, 0, 0, 0);
+
+  const month = String(
+    monthIndex + 1
+  ).padStart(2, "0");
+
+  const dueDateString =
+    `${year}-${month}-${String(dueDay).padStart(
+      2,
+      "0"
+    )}`;
+
+  return {
+    year,
+    monthIndex,
+    month,
+    dueDay,
+    dueDate,
+    dueDateString,
+  };
+}
+
+function getUpcomingDueDetails(
+  today,
+  requestedDueDay
+) {
+  let targetYear = today.getFullYear();
+  let targetMonthIndex = today.getMonth();
+
+  let dueDetails = buildDueDetails(
+    targetYear,
+    targetMonthIndex,
+    requestedDueDay
+  );
+
+  /*
+   * If this month's due date already passed,
+   * evaluate the same recurring expense for
+   * next month.
+   *
+   * Example:
+   * July 31 + recurring day 1 = August 1.
+   */
+  if (dueDetails.dueDate < today) {
+    const nextMonth = new Date(
+      targetYear,
+      targetMonthIndex + 1,
+      1
+    );
+
+    targetYear = nextMonth.getFullYear();
+    targetMonthIndex = nextMonth.getMonth();
+
+    dueDetails = buildDueDetails(
+      targetYear,
+      targetMonthIndex,
+      requestedDueDay
+    );
+  }
+
+  return dueDetails;
+}
+
+/* =========================================================
+   PUSH NOTIFICATIONS
+========================================================= */
+
+async function sendPushToUserDevices(
+  uid,
+  title,
+  body
+) {
   const devicesSnapshot = await db
     .collection("users")
     .doc(uid)
@@ -14,49 +125,66 @@ async function sendPushToUserDevices(uid, title, body) {
     .get();
 
   if (devicesSnapshot.empty) {
-    logger.info(`No FCM devices found for ${uid}`);
+    logger.info(
+      `No FCM devices found for ${uid}`
+    );
+
     return 0;
   }
 
   const messages = [];
 
-  devicesSnapshot.forEach(deviceDoc => {
+  devicesSnapshot.forEach((deviceDoc) => {
     const device = deviceDoc.data();
 
-    if (device.token) {
-      messages.push({
-        token: device.token,
-        notification: {
-          title,
-          body
-        },
-        webpush: {
-          notification: {
-            icon: "/icons/icon-192.png",
-            badge: "/icons/icon-192.png"
-          }
-        }
-      });
+    if (!device.token) {
+      return;
     }
+
+    messages.push({
+      token: device.token,
+
+      notification: {
+        title,
+        body,
+      },
+
+      webpush: {
+        notification: {
+          icon: "/icons/icon-192.png",
+          badge: "/icons/icon-192.png",
+        },
+      },
+    });
   });
 
   if (messages.length === 0) {
-    logger.info(`No valid FCM tokens found for ${uid}`);
+    logger.info(
+      `No valid FCM tokens found for ${uid}`
+    );
+
     return 0;
   }
 
-  const response = await admin.messaging().sendEach(messages);
+  const response =
+    await admin.messaging().sendEach(messages);
 
   logger.info(
-    `Push sent to ${response.successCount}/${messages.length} device(s) for ${uid}`
+    `Push sent to ${response.successCount}/` +
+    `${messages.length} device(s) for ${uid}`
   );
 
   return response.successCount;
 }
 
+/* =========================================================
+   NOTIFICATION CLEANUP
+========================================================= */
+
 async function cleanupOldNotifications(uid) {
   const thirtyDaysAgo =
-    Date.now() - 30 * 24 * 60 * 60 * 1000;
+    Date.now() -
+    30 * MILLISECONDS_PER_DAY;
 
   const oldNotifications = await db
     .collection("users")
@@ -66,34 +194,47 @@ async function cleanupOldNotifications(uid) {
     .where("created", "<", thirtyDaysAgo)
     .get();
 
-  if (oldNotifications.empty) return;
+  if (oldNotifications.empty) {
+    return;
+  }
 
   const batch = db.batch();
 
-  oldNotifications.docs.forEach(docSnap => {
-    batch.delete(docSnap.ref);
-  });
+  oldNotifications.docs.forEach(
+    (notificationDocument) => {
+      batch.delete(notificationDocument.ref);
+    }
+  );
 
   await batch.commit();
 
   logger.info(
-    `Deleted ${oldNotifications.size} old notification(s) for ${uid}`
+    `Deleted ${oldNotifications.size} ` +
+    `old notification(s) for ${uid}`
   );
 }
+
+/* =========================================================
+   DAILY RECURRING REMINDER
+========================================================= */
 
 exports.dailyReminder = onSchedule(
   {
     schedule: "every day 08:00",
     timeZone: "America/Los_Angeles",
   },
+
   async () => {
-    logger.info("Daily reminder function executed!");
+    logger.info(
+      "Daily reminder function executed!"
+    );
 
     const usersSnapshot = await db
       .collection("users")
       .get();
 
     const today = new Date();
+
     today.setHours(0, 0, 0, 0);
 
     for (const userDoc of usersSnapshot.docs) {
@@ -108,68 +249,70 @@ exports.dailyReminder = onSchedule(
         .where("active", "==", true)
         .get();
 
+      logger.info(
+        `Checking ${recurringSnapshot.size} ` +
+        `active recurring template(s) for ${uid}`
+      );
+
       for (
         const recurringDoc of recurringSnapshot.docs
       ) {
         const recurring = recurringDoc.data();
 
-        let dueDay = Number(
+        const requestedDueDay = Number(
           recurring.recurringDay
         );
 
-        if (!dueDay) {
+        if (
+          !Number.isInteger(requestedDueDay) ||
+          requestedDueDay < 1 ||
+          requestedDueDay > 31
+        ) {
+          logger.warn(
+            `Invalid recurring day for ` +
+            `${recurringDoc.id}: ` +
+            `${recurring.recurringDay}`
+          );
+
           continue;
         }
 
-        const year = today.getFullYear();
-        const monthIndex = today.getMonth();
+        const dueDetails =
+          getUpcomingDueDetails(
+            today,
+            requestedDueDay
+          );
 
-        const month = String(
-          monthIndex + 1
-        ).padStart(2, "0");
-
-        const daysInMonth = new Date(
-          year,
-          monthIndex + 1,
-          0
-        ).getDate();
-
-        dueDay = Math.min(
-          dueDay,
-          daysInMonth
+        const diffDays = Math.round(
+          (
+            dueDetails.dueDate.getTime() -
+            today.getTime()
+          ) / MILLISECONDS_PER_DAY
         );
 
-        const dueDate = new Date(
-          year,
-          monthIndex,
-          dueDay
+        logger.info(
+          `Checking ${recurring.desc} for ${uid}: ` +
+          `due ${dueDetails.dueDateString}, ` +
+          `${diffDays} day(s) away`
         );
 
-        dueDate.setHours(0, 0, 0, 0);
-
-        const diffDays = Math.ceil(
-          (dueDate.getTime() - today.getTime()) /
-            (1000 * 60 * 60 * 24)
-        );
-
-        // Only process the three-day reminder window.
+        /*
+         * Only process expenses due today or
+         * during the next three days.
+         */
         if (diffDays < 0 || diffDays > 3) {
           continue;
         }
 
-        const dueDateString =
-          `${year}-${month}-${String(
-            dueDay
-          ).padStart(2, "0")}`;
-
         /*
-         * This matches the duplicate-safe ID created
-         * by useRecurringExpenses:
+         * Matches the client-generated ID:
          *
          * templateId_2026_08
          */
         const expenseId =
-          `${recurringDoc.id}_${year}_${month}`;
+          `${recurringDoc.id}_` +
+          `${dueDetails.year}_` +
+          `${dueDetails.month}`;
 
         const expenseRef = db
           .collection("users")
@@ -204,11 +347,25 @@ exports.dailyReminder = onSchedule(
           continue;
         }
 
+        if (
+          expense.dueDate &&
+          expense.dueDate !==
+            dueDetails.dueDateString
+        ) {
+          logger.warn(
+            `Skipping ${uid}: ${expenseId} has ` +
+            `due date ${expense.dueDate}, expected ` +
+            dueDetails.dueDateString
+          );
+
+          continue;
+        }
+
         let expenseStatus = expense.status;
 
         /*
-         * Automatically activate the expense when its
-         * due date enters the three-day window.
+         * Automatically activate the generated
+         * expense three days before it is due.
          */
         if (expenseStatus === "ON HOLD") {
           await expenseRef.update({
@@ -225,7 +382,10 @@ exports.dailyReminder = onSchedule(
           );
         }
 
-        // Never notify an expense already paid.
+        /*
+         * A paid expense must never be changed or
+         * receive another due reminder.
+         */
         if (expenseStatus === "PAID") {
           logger.info(
             `Skipping notification for ${uid}: ` +
@@ -244,24 +404,27 @@ exports.dailyReminder = onSchedule(
           continue;
         }
 
-        let dueText = "";
+        let message = "";
 
         if (diffDays === 0) {
-          dueText = "Payment due today";
+          message = "Payment due today";
         } else if (diffDays === 1) {
-          dueText = "Payment due tomorrow";
+          message = "Payment due tomorrow";
         } else {
-          dueText =
+          message =
             `Payment due in ${diffDays} days`;
         }
 
-        const message = dueText;
-
-        // Keep the existing notification ID format
-        // so previously created reminders do not duplicate.
+        /*
+         * Keep the existing notification ID format
+         * so previously created notifications remain
+         * duplicate-safe.
+         */
         const notificationId =
-          `${recurringDoc.id}_${year}_` +
-          `${monthIndex + 1}_${dueDay}`;
+          `${recurringDoc.id}_` +
+          `${dueDetails.year}_` +
+          `${dueDetails.monthIndex + 1}_` +
+          `${dueDetails.dueDay}`;
 
         const notificationRef = db
           .collection("users")
@@ -288,11 +451,12 @@ exports.dailyReminder = onSchedule(
             message,
             desc: recurring.desc,
             amount: Number(recurring.amount),
-            recurringDay: dueDay,
-            dueDate: dueDateString,
+            recurringDay: dueDetails.dueDay,
+            dueDate: dueDetails.dueDateString,
             read: false,
             created: Date.now(),
           },
+
           {
             merge: true,
           }
@@ -302,12 +466,12 @@ exports.dailyReminder = onSchedule(
           uid,
           "Reminder 🔔",
           `${recurring.desc} • ${message} • ` +
-            `$${Number(recurring.amount).toFixed(2)}`
+          `$${Number(recurring.amount).toFixed(2)}`
         );
 
         logger.info(
           `Notification created for ${uid}: ` +
-          message
+          `${recurring.desc} • ${message}`
         );
       }
     }
@@ -316,26 +480,41 @@ exports.dailyReminder = onSchedule(
   }
 );
 
-exports.sendTestPush = onCall(async (request) => {
-  const uid = request.auth?.uid;
+/* =========================================================
+   TEST PUSH
+========================================================= */
 
-  if (!uid) {
-    throw new HttpsError("unauthenticated", "Please log in first.");
+exports.sendTestPush = onCall(
+  async (request) => {
+    const uid = request.auth?.uid;
+
+    if (!uid) {
+      throw new HttpsError(
+        "unauthenticated",
+        "Please log in first."
+      );
+    }
+
+    const sentCount =
+      await sendPushToUserDevices(
+        uid,
+        "Due Reminder",
+        "Netflix is due tomorrow • $15.99"
+      );
+
+    if (sentCount === 0) {
+      throw new HttpsError(
+        "not-found",
+        "No valid FCM devices found."
+      );
+    }
+
+    return {
+      success: true,
+      sentCount,
+      message:
+        `Test push sent to ${sentCount} ` +
+        "device(s)!",
+    };
   }
-
-  const sentCount = await sendPushToUserDevices(
-    uid,
-    "Due Reminder",
-    "Netflix is due tomorrow • $15.99"
-  );
-
-  if (sentCount === 0) {
-    throw new HttpsError("not-found", "No valid FCM devices found.");
-  }
-
-  return {
-    success: true,
-    sentCount,
-    message: `Test push sent to ${sentCount} device(s)!`
-  };
-});
+);
