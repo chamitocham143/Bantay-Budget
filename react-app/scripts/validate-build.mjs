@@ -30,7 +30,7 @@ const recurringSource = await readFile(
 
 const recurringInvariants = [
   "getGenerationCandidate",
-  "generationDate.getDate() - 5",
+  "generationDate.getDate() - 7",
   "`${template.id}_${candidate.year}_${candidate.month}`",
   "dueDate: candidate.dueDate",
   'status: "ON HOLD"',
@@ -43,8 +43,8 @@ if (
   )
 ) {
   throw new Error(
-    "Advance recurring generation invariants are missing."
-  );
+  "Seven-day recurring generation invariants are missing."
+);
 }
 
 const lockSource = await readFile(resolve("src/hooks/useInactivityLock.js"), "utf8");

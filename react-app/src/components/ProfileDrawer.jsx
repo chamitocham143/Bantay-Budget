@@ -139,7 +139,7 @@ function ProfileDrawer({
         >
           ⇥ Sign Out
         </button>
-        <p className="drawer-version">Bantay Budget · React migration preview</p>
+        <p className="drawer-version">© {new Date().getFullYear()} Bantay Budget </p>
       </aside>
     </div>
   );

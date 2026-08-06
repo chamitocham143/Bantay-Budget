@@ -58,7 +58,7 @@ function getGenerationCandidate(
   const generationDate = new Date(windowStart);
 
   generationDate.setDate(
-    generationDate.getDate() - 5
+    generationDate.getDate() - 7
   );
 
   generationDate.setHours(0, 0, 0, 0);

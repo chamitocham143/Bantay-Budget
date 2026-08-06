@@ -94,8 +94,7 @@ function getTransactionIcon(transaction) {
 
   if (
     text.includes("bank") ||
-    text.includes("loan") ||
-    text.includes("insurance")
+    text.includes("loan") 
   ) {
     return "🏦";
   }
@@ -181,6 +180,7 @@ function getTransactionIcon(transaction) {
   if (
     text.includes("carwash") ||
     text.includes("car") ||
+    text.includes("car insurance") ||
     text.includes("honda") ||
     text.includes("toyota") ||
     text.includes("tesla") ||

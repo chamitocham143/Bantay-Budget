@@ -43,7 +43,7 @@ function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnab
     onChange={(event) =>
       onCurrencyChange(event.target.value)
     }
-    aria-label="Select currency"
+    aria-label="Select currency" 
   >
     <option value="USD">USD — $</option>
     <option value="PHP">PHP — ₱</option>
@@ -80,7 +80,7 @@ function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnab
         </section>
 
         <button className="settings-logout" type="button" onClick={onLogout}>Sign Out</button>
-        <footer className="settings-footer"><strong>Bantay Budget</strong><span>Version1.0.0</span></footer>
+        <footer className="settings-footer"><strong>Bantay Budget</strong><span>Version 1.0.0</span></footer>
       </div>
     </section>
 

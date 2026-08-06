@@ -13,16 +13,67 @@ function formatRelativeTime(timestamp) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-function NotificationsPage({ notifications, unreadCount, oldReadCount, loading, error, pushEnabled, pushBusy, pushMessage, onClose, onMarkRead, onMarkAllRead, onClearOld, onTogglePush }) {
-  const [confirmClear, setConfirmClear] = useState(false);
-  const [actionBusy, setActionBusy] = useState(false);
-  const [actionError, setActionError] = useState("");
+function NotificationsPage({
+  notifications,
+  unreadCount,
+  oldReadCount,
+  loading,
+  error,
+  pushEnabled,
+  pushBusy,
+  pushMessage,
+  onClose,
+  onMarkRead,
+  onMarkAllRead,
+  onClearOld,
+  onTogglePush,
+}) {
+  const [confirmClear, setConfirmClear] =
+    useState(false);
+
+  const [actionBusy, setActionBusy] =
+    useState(false);
+
+  const [actionError, setActionError] =
+    useState("");
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
+    const previousOverflow =
+      document.body.style.overflow;
+
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = previousOverflow; };
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow;
+    };
   }, []);
+
+  useEffect(() => {
+    async function synchronizeAppBadge() {
+      try {
+        if (
+          unreadCount > 0 &&
+          navigator.setAppBadge
+        ) {
+          await navigator.setAppBadge(unreadCount);
+        } else if (
+          navigator.clearAppBadge
+        ) {
+          await navigator.clearAppBadge();
+        }
+      } catch (error) {
+        console.warn(
+          "Unable to synchronize app badge:",
+          error
+        );
+      }
+    }
+
+    synchronizeAppBadge();
+  }, [unreadCount]);
+
+  // The rest of the component continues here.
 
   const runAction = async (action) => {
     setActionBusy(true);

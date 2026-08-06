@@ -38,8 +38,8 @@ function RecurringTemplateModal({ template, busy, onClose, onSave }) {
     <Modal title={template ? "Edit Recurring Expense" : "Add Recurring Expense"} onClose={onClose}>
       <form className="modal-form" onSubmit={handleSubmit}>
         {error && <div className="form-message error" role="alert">{error}</div>}
-        <label><span>Description</span><input name="desc" value={form.desc} onChange={updateField} autoFocus /></label>
-        <label><span>Amount</span><input name="amount" type="number" min="0.01" step="0.01" inputMode="decimal" value={form.amount} onChange={updateField} /></label>
+        <label><input name="desc" value={form.desc} placeholder="Description" onChange={updateField} autoFocus /></label>
+        <label><input name="amount" type="number" min="0.01" step="0.01" inputMode="decimal" value={form.amount} placeholder="Amount" onChange={updateField} /></label>
         <label>
           <span>Due day</span>
           <select name="recurringDay" value={form.recurringDay} onChange={updateField} disabled={Boolean(template)}>

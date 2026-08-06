@@ -40,8 +40,8 @@ function InflowModal({ inflow, busy, onClose, onSave }) {
       <form className="modal-form" onSubmit={handleSubmit}>
         {error && <div className="form-message error" role="alert">{error}</div>}
         <label><span>Date</span><input name="date" type="date" value={form.date} onChange={updateField} /></label>
-        <label><span>Description</span><input name="desc" value={form.desc} onChange={updateField} autoFocus /></label>
-        <label><span>Amount</span><input name="amount" type="number" min="0.01" step="0.01" inputMode="decimal" value={form.amount} onChange={updateField} /></label>
+        <label><input name="desc" value={form.desc} placeholder="Description" onChange={updateField} autoFocus /></label>
+        <label><input name="amount" placeholder="Amount" type="number" min="0.01" step="0.01" inputMode="decimal" value={form.amount} onChange={updateField} /></label>
         <div className="modal-actions">
           <button className="secondary-button" type="button" onClick={onClose} disabled={busy}>Cancel</button>
           <button className="primary-button" type="submit" disabled={busy}>{busy ? "Saving…" : "Save Inflow"}</button>
