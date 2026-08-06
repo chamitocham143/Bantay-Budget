@@ -10,11 +10,33 @@ firebase.initializeApp({
   appId: "1:1087776652368:web:6168ac2e6c88517d96a555",
 });
 
-firebase.messaging().onBackgroundMessage((payload) => {
+const messaging = firebase.messaging();
+
+messaging.onBackgroundMessage(async (payload) => {
   console.log("Background message received:", payload);
+
+  const unreadCount = Number(
+    payload.data?.unreadCount || 0
+  );
+
+  try {
+    if (
+      unreadCount > 0 &&
+      self.navigator.setAppBadge
+    ) {
+      await self.navigator.setAppBadge(unreadCount);
+    } else if (self.navigator.clearAppBadge) {
+      await self.navigator.clearAppBadge();
+    }
+  } catch (error) {
+    console.warn(
+      "Unable to update background app badge:",
+      error
+    );
+  }
 });
 
-const CACHE_NAME = "bantay-budget-react-v1";
+const CACHE_NAME = "bantay-budget-react-v2";
 const APP_SHELL = [
   "/",
   "/index.html",

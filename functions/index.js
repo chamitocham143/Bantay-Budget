@@ -116,8 +116,10 @@ function getUpcomingDueDetails(
 async function sendPushToUserDevices(
   uid,
   title,
-  body
+  body,
+  data = {}
 ) {
+
   const devicesSnapshot = await db
     .collection("users")
     .doc(uid)
@@ -141,21 +143,23 @@ async function sendPushToUserDevices(
       return;
     }
 
-    messages.push({
-      token: device.token,
+   messages.push({
+  token: device.token,
 
-      notification: {
-        title,
-        body,
-      },
+  notification: {
+    title,
+    body,
+  },
 
-      webpush: {
-        notification: {
-          icon: "/icons/icon-192.png",
-          badge: "/icons/icon-192.png",
-        },
-      },
-    });
+  data,
+
+  webpush: {
+    notification: {
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+    },
+  },
+});
   });
 
   if (messages.length === 0) {
@@ -462,11 +466,24 @@ exports.dailyReminder = onSchedule(
           }
         );
 
+        const unreadNotificationsSnapshot = await db
+        .collection("users")
+        .doc(uid)
+        .collection("notifications")
+        .where("read", "==", false)
+        .get();
+
+        const unreadCount =
+        unreadNotificationsSnapshot.size;
+
         await sendPushToUserDevices(
           uid,
           "Reminder 🔔",
           `${recurring.desc} • ${message} • ` +
-          `$${Number(recurring.amount).toFixed(2)}`
+            `$${Number(recurring.amount).toFixed(2)}`,
+          {
+            unreadCount: String(unreadCount),
+          }
         );
 
         logger.info(
