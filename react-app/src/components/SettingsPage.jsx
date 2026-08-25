@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, appLockEnabled, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
+function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, appLockEnabled, biometricUnlockEnabled, biometricAvailable, biometricBusy, biometricMessage, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onToggleBiometricUnlock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -52,8 +52,11 @@ function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnab
           <button type="button" onClick={onNotifications}><span>🔔</span><div><strong>Notifications</strong><small>{pushEnabled ? "Push enabled on this device" : "Push disabled on this device"}</small></div>{unreadCount > 0 ? <b>{unreadCount}</b> : <i>›</i>}</button>
           <button type="button" onClick={onRecurring}><span>↻</span><div><strong>Recurring Expenses</strong><small>Manage monthly templates</small></div><i>›</i></button>
           <div className="settings-toggle-row"><span>🔒</span><div><strong>App Lock</strong><small>Lock only after 3 minutes of inactivity</small></div><label className="switch-control"><input type="checkbox" checked={appLockEnabled} onChange={(event) => onToggleAppLock(event.target.checked)} /><span /></label></div>
+          <div className="settings-toggle-row"><span>◉</span><div><strong>Face ID / Device Unlock</strong><small>{biometricAvailable === false ? "Not available in this browser" : biometricUnlockEnabled ? "Required when unlocking on this device" : appLockEnabled ? "Use Face ID or device security" : "Turn on App Lock first"}</small></div><label className="switch-control"><input type="checkbox" checked={biometricUnlockEnabled} disabled={!appLockEnabled || biometricAvailable !== true || biometricBusy} onChange={(event) => onToggleBiometricUnlock(event.target.checked)} /><span /></label></div>
         </section>
+        {biometricMessage && <div className={`form-message ${biometricMessage.type}`} role="status">{biometricMessage.text}</div>}
         <p className="settings-note">Changing tabs, windows, or apps does not trigger an immediate lock. Only the inactivity timer controls it.</p>
+        <p className="settings-note">Face ID data never leaves your device. iOS may offer the device passcode as a secure fallback.</p>
 
         <div className="settings-section-label">Data Backup</div>
         <section className="backup-settings-card">
