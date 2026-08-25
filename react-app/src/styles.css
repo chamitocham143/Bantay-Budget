@@ -4686,6 +4686,8 @@ input:focus,
 .app-lock-card h1 { font-size: clamp(28px, 8vw, 40px); }
 .app-lock-card > p:not(.eyebrow) { margin: 12px 0 24px; color: var(--muted); font-size: 13px; line-height: 1.55; }
 .app-lock-card button { width: 100%; min-height: 50px; border: 0; border-radius: 15px; color: white; background: var(--primary); font-weight: 850; }
+.app-lock-card .app-lock-signout { min-height: 42px; margin-top: 10px; color: var(--muted); background: transparent; font-size: 12px; }
+.app-lock-card .form-message { margin: -10px 0 16px; }
 
 @keyframes pulse { 50% { transform: scale(1.06); box-shadow: 0 18px 44px rgb(0 83 70 / 52%); } }
 @keyframes bounce { 0%, 80%, 100% { transform: scale(0.65); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }

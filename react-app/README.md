@@ -42,6 +42,7 @@ complete and the draft pull request is approved.
 
 - `src/components` — screens, cards, drawers, and dialogs
 - `src/hooks` — Firestore listeners, recurring generation, and inactivity lock
+- `src/services/biometricUnlock.js` — WebAuthn/passkey enrollment and biometric app unlock
 - `src/services` — backup, push registration, and service-worker registration
 - `public` — install icons, PWA manifest, and combined offline/FCM worker
 - `scripts/validate-build.mjs` — production/PWA validation

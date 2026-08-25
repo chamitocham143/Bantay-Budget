@@ -8,6 +8,7 @@ const faqItems = [
   ["What is Allocable Balance?", "Allocable Balance is the money available after paid expenses are deducted.", "Total Income − Total Paid"],
   ["What is Remaining Balance?", "Remaining Balance estimates how much will remain after pending expenses are settled.", "Allocable Balance − Total Pending"],
   ["How do recurring expenses work?", "Each active template creates one duplicate-safe expense per month. New generated expenses begin On Hold."],
+  ["How does Face ID / Device Unlock work?", "When enabled with App Lock, Bantay Budget uses a passkey to ask your device to verify you after three minutes of inactivity. Your face or fingerprint data stays on your device, and the operating system may offer its secure passcode fallback."],
   ["Are my backups uploaded anywhere?", "No. Exported backup files are downloaded directly to your device and are not stored by Bantay Budget."],
 ];
 

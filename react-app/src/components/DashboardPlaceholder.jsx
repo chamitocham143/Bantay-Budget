@@ -24,6 +24,14 @@ import FinanceTip from "./FinanceTip.jsx";
 import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
 import { sendTestPush } from "../services/developerTools.js";
+import {
+  BIOMETRIC_UNLOCK_KEY,
+  biometricUnlockIsAvailable,
+  disableBiometricUnlock,
+  enableBiometricUnlock,
+  getBiometricUnlockStatus,
+  verifyBiometricUnlock,
+} from "../services/biometricUnlock.js";
 import BottomActionBar from "./BottomActionBar";
 import Calculator from "./Calculator.jsx";  
 import FinancialAnalytics from "./FinancialAnalytics.jsx";
@@ -83,6 +91,10 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const [backupMessage, setBackupMessage] = useState(null);
   const [backupToRestore, setBackupToRestore] = useState(null);
   const [appLockEnabled, setAppLockEnabled] = useState(() => localStorage.getItem(APP_LOCK_KEY) === "true");
+  const [biometricUnlockEnabled, setBiometricUnlockEnabled] = useState(() => localStorage.getItem(BIOMETRIC_UNLOCK_KEY) === "true");
+  const [biometricAvailable, setBiometricAvailable] = useState(null);
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const [biometricMessage, setBiometricMessage] = useState(null);
   const [actionMessage, setActionMessage] = useState(null);
   const [developerEnabled, setDeveloperEnabled] = useState(false);
   const [testPushBusy, setTestPushBusy] = useState(false);
@@ -116,6 +128,32 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
   const { targetRef: pullTargetRef, pulling, refreshing, } = usePullToRefresh(Boolean(analyticsMetric));
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadBiometricState = async () => {
+      const available = await biometricUnlockIsAvailable();
+      if (!active) return;
+      setBiometricAvailable(available);
+
+      if (!available) {
+        localStorage.setItem(BIOMETRIC_UNLOCK_KEY, "false");
+        setBiometricUnlockEnabled(false);
+        return;
+      }
+
+      try {
+        const enabled = await getBiometricUnlockStatus();
+        if (active) setBiometricUnlockEnabled(enabled);
+      } catch (statusError) {
+        console.error("Unable to load biometric unlock status:", statusError);
+      }
+    };
+
+    loadBiometricState();
+    return () => { active = false; };
+  }, []);
 
   const saveInflow = async (values) => {
     setMutationError("");
@@ -351,6 +389,40 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const toggleAppLock = (enabled) => {
     localStorage.setItem(APP_LOCK_KEY, String(enabled));
     setAppLockEnabled(enabled);
+  };
+
+  const toggleBiometricUnlock = async (enabled) => {
+    setBiometricBusy(true);
+    setBiometricMessage(null);
+
+    try {
+      if (enabled) {
+        await enableBiometricUnlock();
+        setBiometricUnlockEnabled(true);
+        setBiometricMessage({ type: "success", text: "Face ID / device unlock is ready on this device." });
+      } else {
+        await disableBiometricUnlock();
+        setBiometricUnlockEnabled(false);
+        setBiometricMessage({ type: "success", text: "Face ID / device unlock was removed from this device." });
+      }
+    } catch (biometricError) {
+      if (biometricError?.name !== "NotAllowedError") {
+        console.error("Unable to update biometric unlock:", biometricError);
+      }
+      setBiometricMessage({
+        type: "error",
+        text: biometricError?.name === "NotAllowedError"
+          ? "Device authentication was canceled. No changes were made."
+          : biometricError?.message || "Unable to update Face ID / device unlock.",
+      });
+    } finally {
+      setBiometricBusy(false);
+    }
+  };
+
+  const handleAppUnlock = async () => {
+    if (biometricUnlockEnabled) await verifyBiometricUnlock();
+    unlockApp();
   };
 
   const handleCsvExport = () => {
@@ -1052,12 +1124,12 @@ const financialScoreAccent =
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
       {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onCalculator={() => setCalculatorOpen(true)} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} biometricUnlockEnabled={biometricUnlockEnabled} biometricAvailable={biometricAvailable} biometricBusy={biometricBusy} biometricMessage={biometricMessage} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onToggleBiometricUnlock={toggleBiometricUnlock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
       {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
-      {appLocked && <AppLockScreen onUnlock={unlockApp} />}
+      {appLocked && <AppLockScreen biometricEnabled={biometricUnlockEnabled} onUnlock={handleAppUnlock} onSignOut={onSignOut} />}
       {calculatorOpen && ( <Calculator onClose={() => setCalculatorOpen(false)} /> )}
       {monthPickerOpen && (<div className="month-picker-overlay" role="presentation" onClick={() => setMonthPickerOpen(false)}>
       
