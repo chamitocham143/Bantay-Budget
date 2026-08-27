@@ -1,19 +1,27 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef } from "react";
 
+// Preserve the original key so existing App Lock users migrate automatically.
 export const APP_LOCK_KEY = "appLockEnabled";
+export const LAST_ACTIVITY_KEY = "bantayBudgetLastActivity";
 export const APP_LOCK_DELAY = 3 * 60 * 1000;
 
-export function useInactivityLock(enabled) {
-  const [locked, setLocked] = useState(false);
+export function recordAuthenticatedActivity(timestamp = Date.now()) {
+  localStorage.setItem(LAST_ACTIVITY_KEY, String(timestamp));
+}
 
+export function automaticSignOutHasExpired(timestamp = Date.now()) {
+  if (localStorage.getItem(APP_LOCK_KEY) !== "true") return false;
+
+  const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+  return Number.isFinite(lastActivity)
+    && lastActivity > 0
+    && timestamp - lastActivity >= APP_LOCK_DELAY;
+}
+
+export function useInactivityLock(enabled, onSignOut) {
   const timerRef = useRef(null);
-  const lastActivityRef = useRef(Date.now());
-  const lockedRef = useRef(false);
+  const signingOutRef = useRef(false);
+  const lastPersistedRef = useRef(0);
 
   const clearTimer = useCallback(() => {
     if (timerRef.current !== null) {
@@ -22,115 +30,86 @@ export function useInactivityLock(enabled) {
     }
   }, []);
 
-  const lockApp = useCallback(() => {
-    clearTimer();
-    lockedRef.current = true;
-    setLocked(true);
-  }, [clearTimer]);
-
-  const scheduleLock = useCallback(() => {
+  const signOutForInactivity = useCallback(async () => {
+    if (signingOutRef.current) return;
+    signingOutRef.current = true;
     clearTimer();
 
-    if (!enabled || lockedRef.current) {
-      return;
+    try {
+      await onSignOut();
+    } catch (error) {
+      signingOutRef.current = false;
+      console.error("Automatic sign-out failed:", error);
     }
+  }, [clearTimer, onSignOut]);
 
-    const elapsed =
-      Date.now() - lastActivityRef.current;
+  const scheduleSignOut = useCallback(() => {
+    clearTimer();
+    if (!enabled || signingOutRef.current) return;
 
-    const remaining = Math.max(
-      APP_LOCK_DELAY - elapsed,
-      0,
-    );
+    const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY));
+    const elapsed = Number.isFinite(lastActivity) ? Date.now() - lastActivity : 0;
+    const remaining = Math.max(APP_LOCK_DELAY - elapsed, 0);
 
     if (remaining === 0) {
-      lockApp();
+      void signOutForInactivity();
       return;
     }
 
     timerRef.current = window.setTimeout(() => {
-      const inactiveFor =
-        Date.now() - lastActivityRef.current;
-
-      if (
-        enabled &&
-        inactiveFor >= APP_LOCK_DELAY
-      ) {
-        lockApp();
-      } else {
-        scheduleLock();
-      }
+      if (automaticSignOutHasExpired()) void signOutForInactivity();
+      else scheduleSignOut();
     }, remaining);
-  }, [clearTimer, enabled, lockApp]);
+  }, [clearTimer, enabled, signOutForInactivity]);
 
   const registerActivity = useCallback(() => {
-    if (!enabled || lockedRef.current) {
-      return;
+    if (!enabled || signingOutRef.current) return;
+    const now = Date.now();
+
+    if (now - lastPersistedRef.current >= 1000) {
+      lastPersistedRef.current = now;
+      recordAuthenticatedActivity(now);
+      scheduleSignOut();
     }
-
-    lastActivityRef.current = Date.now();
-    scheduleLock();
-  }, [enabled, scheduleLock]);
-
-  const unlock = useCallback(() => {
-    lockedRef.current = false;
-    lastActivityRef.current = Date.now();
-    setLocked(false);
-  }, []);
+  }, [enabled, scheduleSignOut]);
 
   useEffect(() => {
     if (!enabled) {
       clearTimer();
-      lockedRef.current = false;
-      setLocked(false);
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+      signingOutRef.current = false;
       return undefined;
     }
 
-    lockedRef.current = false;
-    lastActivityRef.current = Date.now();
-    scheduleLock();
+    if (!localStorage.getItem(LAST_ACTIVITY_KEY)) recordAuthenticatedActivity();
 
-    const activityEvents = [
-      "pointerdown",
-      "keydown",
-      "scroll",
-    ];
+    if (automaticSignOutHasExpired()) {
+      void signOutForInactivity();
+      return undefined;
+    }
 
+    scheduleSignOut();
+    const activityEvents = ["pointerdown", "keydown", "scroll"];
     activityEvents.forEach((eventName) => {
-      window.addEventListener(
-        eventName,
-        registerActivity,
-        { passive: true },
-      );
+      window.addEventListener(eventName, registerActivity, { passive: true });
     });
+
+    const checkElapsedTime = () => {
+      if (document.visibilityState !== "visible") return;
+      if (automaticSignOutHasExpired()) void signOutForInactivity();
+      else scheduleSignOut();
+    };
+
+    document.addEventListener("visibilitychange", checkElapsedTime);
+    window.addEventListener("pageshow", checkElapsedTime);
 
     return () => {
       clearTimer();
-
       activityEvents.forEach((eventName) => {
-        window.removeEventListener(
-          eventName,
-          registerActivity,
-        );
+        window.removeEventListener(eventName, registerActivity);
       });
+      document.removeEventListener("visibilitychange", checkElapsedTime);
+      window.removeEventListener("pageshow", checkElapsedTime);
     };
-  }, [
-    enabled,
-    clearTimer,
-    registerActivity,
-    scheduleLock,
-  ]);
-
-  useEffect(() => {
-    if (!locked && enabled) {
-      lockedRef.current = false;
-      lastActivityRef.current = Date.now();
-      scheduleLock();
-    }
-  }, [locked, enabled, scheduleLock]);
-
-  return {
-    locked,
-    unlock,
-  };
+  }, [clearTimer, enabled, registerActivity, scheduleSignOut, signOutForInactivity]);
 }

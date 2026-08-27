@@ -54,6 +54,16 @@ function requireDeviceId(request) {
   return deviceId;
 }
 
+function requireBiometricLoginUid(request) {
+  const uid = String(request.data?.uid || "");
+
+  if (!uid || uid.length > 128 || uid.includes("/")) {
+    throw new HttpsError("invalid-argument", "Face ID login is not available on this device.");
+  }
+
+  return uid;
+}
+
 function getWebAuthnContext(request) {
   const origin = request.rawRequest?.get("origin") || "";
   const previewOrigin = /^https:\/\/expenses-monitoring-4540e--[a-z0-9-]+\.web\.app$/;
@@ -835,6 +845,99 @@ exports.finishBiometricAuthentication = onCall(async (request) => {
   }
 });
 
+exports.beginBiometricSignIn = onCall(async (request) => {
+  const uid = requireBiometricLoginUid(request);
+  const deviceId = requireDeviceId(request);
+  const context = getWebAuthnContext(request);
+  const registered = await credentialsRef(uid)
+    .where("deviceId", "==", deviceId)
+    .get();
+  const credentials = registered.docs
+    .map((document) => document.data())
+    .filter((credential) => credential.rpID === context.rpID);
+
+  if (credentials.length === 0) {
+    throw new HttpsError("not-found", "Face ID login is not available on this device.");
+  }
+
+  const options = await generateAuthenticationOptions({
+    rpID: context.rpID,
+    timeout: 60_000,
+    userVerification: "required",
+    allowCredentials: credentials.map((credential) => ({
+      id: credential.id,
+      transports: credential.transports || undefined,
+    })),
+  });
+
+  await saveChallenge(uid, "signIn", options.challenge, deviceId, context);
+  return options;
+});
+
+exports.finishBiometricSignIn = onCall(async (request) => {
+  const uid = requireBiometricLoginUid(request);
+  const deviceId = requireDeviceId(request);
+  const context = getWebAuthnContext(request);
+  const response = request.data?.response;
+
+  if (!response?.id || !/^[a-zA-Z0-9_-]{20,1024}$/.test(response.id)) {
+    throw new HttpsError("invalid-argument", "A Face ID response is required.");
+  }
+
+  const expectedChallenge = await consumeChallenge(
+    uid,
+    "signIn",
+    deviceId,
+    context,
+  );
+  try {
+    const credentialRef = credentialsRef(uid).doc(response.id);
+    const [credentialSnapshot, userRecord] = await Promise.all([
+      credentialRef.get(),
+      admin.auth().getUser(uid),
+    ]);
+
+    if (!credentialSnapshot.exists || !userRecord.emailVerified || userRecord.disabled) {
+      throw new Error("The account or passkey is not eligible for sign-in.");
+    }
+
+    const stored = credentialSnapshot.data();
+    if (stored.deviceId !== deviceId || stored.rpID !== context.rpID) {
+      throw new Error("The passkey is not registered for this device.");
+    }
+
+    const verification = await verifyAuthenticationResponse({
+      response,
+      expectedChallenge,
+      expectedOrigin: context.origin,
+      expectedRPID: context.rpID,
+      requireUserVerification: true,
+      credential: {
+        id: stored.id,
+        publicKey: Buffer.from(stored.publicKey, "base64url"),
+        counter: Number(stored.counter || 0),
+        transports: stored.transports || undefined,
+      },
+    });
+
+    if (!verification.verified || !verification.authenticationInfo.userVerified) {
+      throw new Error("Authentication was not verified.");
+    }
+
+    await credentialRef.update({
+      counter: verification.authenticationInfo.newCounter,
+      lastUsedAt: Date.now(),
+      credentialBackedUp: verification.authenticationInfo.credentialBackedUp,
+    });
+
+    const token = await admin.auth().createCustomToken(uid);
+    return { verified: true, token };
+  } catch (error) {
+    logger.warn("Biometric sign-in verification failed", { uid, error: error.message });
+    throw new HttpsError("permission-denied", "Face ID login could not be verified.");
+  }
+});
+
 exports.removeBiometricUnlock = onCall(async (request) => {
   const uid = requireAuthenticatedUser(request);
   const deviceId = requireDeviceId(request);
@@ -846,6 +949,7 @@ exports.removeBiometricUnlock = onCall(async (request) => {
   snapshot.docs.forEach((document) => batch.delete(document.ref));
   batch.delete(challengeRef(uid, "registration"));
   batch.delete(challengeRef(uid, "authentication"));
+  batch.delete(challengeRef(uid, "signIn"));
   await batch.commit();
 
   return { removed: snapshot.size };

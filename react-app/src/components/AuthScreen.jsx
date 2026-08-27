@@ -8,6 +8,11 @@ import {
 } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebase.js";
+import { recordAuthenticatedActivity } from "../hooks/useInactivityLock.js";
+import {
+  biometricLoginIsEnabledOnDevice,
+  signInWithBiometric,
+} from "../services/biometricUnlock.js";
 
 const initialRegistration = { name: "", email: "", password: "" };
 
@@ -33,6 +38,8 @@ function AuthScreen({ theme, onToggleTheme }) {
   const [unverifiedUser, setUnverifiedUser] = useState(null);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [biometricBusy, setBiometricBusy] = useState(false);
+  const biometricLoginEnabled = biometricLoginIsEnabledOnDevice();
 
   const updateRegistration = (event) => {
     setRegistration((current) => ({
@@ -53,6 +60,7 @@ function AuthScreen({ theme, onToggleTheme }) {
     setBusy(true);
 
     try {
+      recordAuthenticatedActivity();
       const credential = await signInWithEmailAndPassword(auth, email, password);
       await credential.user.reload();
 
@@ -68,6 +76,28 @@ function AuthScreen({ theme, onToggleTheme }) {
       setMessage({ type: "error", text: friendlyError(error) });
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    setMessage(null);
+    setBiometricBusy(true);
+
+    try {
+      recordAuthenticatedActivity();
+      await signInWithBiometric();
+    } catch (error) {
+      if (error?.name !== "NotAllowedError") {
+        console.error("Face ID login failed:", error);
+      }
+      setMessage({
+        type: "error",
+        text: error?.name === "NotAllowedError"
+          ? "Face ID login was canceled."
+          : "Face ID login could not be verified. Use your email and password instead.",
+      });
+    } finally {
+      setBiometricBusy(false);
     }
   };
 
@@ -175,6 +205,19 @@ function AuthScreen({ theme, onToggleTheme }) {
 
         {mode === "login" ? (
           <form onSubmit={handleLogin}>
+            {biometricLoginEnabled && (
+              <>
+                <button
+                  className="biometric-login-button"
+                  disabled={busy || biometricBusy}
+                  type="button"
+                  onClick={handleBiometricLogin}
+                >
+                  {biometricBusy ? "Verifying…" : "◉ Sign in with Face ID"}
+                </button>
+                <div className="auth-divider"><span>or use email and password</span></div>
+              </>
+            )}
             <label>
               <input
                 type="email"

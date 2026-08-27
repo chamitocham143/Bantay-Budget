@@ -48,8 +48,19 @@ if (
 }
 
 const lockSource = await readFile(resolve("src/hooks/useInactivityLock.js"), "utf8");
-if (!lockSource.includes("3 * 60 * 1000") || lockSource.includes("visibilitychange") || lockSource.includes("blur")) {
-  throw new Error("Inactivity-only app-lock validation failed.");
+if (
+  !lockSource.includes("3 * 60 * 1000")
+  || !lockSource.includes("bantayBudgetLastActivity")
+  || !lockSource.includes("visibilitychange")
+  || !lockSource.includes("await onSignOut()")
+  || lockSource.includes('addEventListener("blur"')
+) {
+  throw new Error("Persistent inactivity sign-out validation failed.");
+}
+
+const authSource = await readFile(resolve("src/components/AuthScreen.jsx"), "utf8");
+if (!authSource.includes("Sign in with Face ID") || !authSource.includes("biometricLoginIsEnabledOnDevice")) {
+  throw new Error("Opt-in Face ID login validation failed.");
 }
 
 const budgetSource = await readFile(resolve("src/hooks/useBudgetData.js"), "utf8");
