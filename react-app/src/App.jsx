@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "./firebase.js";
 import AuthScreen from "./components/AuthScreen.jsx";
 import DashboardPlaceholder from "./components/DashboardPlaceholder.jsx";
 import SplashScreen from "./components/SplashScreen.jsx";
+import { automaticSignOutHasExpired } from "./hooks/useInactivityLock.js";
 
 const THEME_KEY = "bantayBudgetTheme";
 
@@ -39,6 +40,11 @@ function App() {
     const unsubscribe = onAuthStateChanged(
       auth,
       async (nextUser) => {
+        if (nextUser && automaticSignOutHasExpired()) {
+          await signOut(auth);
+          return;
+        }
+
         if (!nextUser?.emailVerified) {
           setUser(null);
           setProfile(null);
@@ -92,6 +98,8 @@ function App() {
     setCurrency(supportedCurrency);
   };
 
+  const handleSignOut = useCallback(() => signOut(auth), []);
+
   if (!authReady) {
     return <SplashScreen />;
   }
@@ -113,7 +121,7 @@ function App() {
       currency={currency}
       onCurrencyChange={changeCurrency}
       onToggleTheme={toggleTheme}
-      onSignOut={() => signOut(auth)}
+      onSignOut={handleSignOut}
     />
   );
 }

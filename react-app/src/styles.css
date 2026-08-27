@@ -145,6 +145,37 @@ h2 { margin: 8px 0 0; font-size: 28px; }
   line-height: 1.6;
 }
 
+.biometric-login-button {
+  width: 100%;
+  min-height: 50px;
+  border: 1px solid rgb(16 185 129 / 34%);
+  border-radius: 15px;
+  color: white;
+  background: linear-gradient(135deg, #07806c, #005346);
+  box-shadow: 0 10px 24px rgb(0 83 70 / 22%);
+  font-weight: 800;
+}
+
+.auth-divider {
+  margin: 20px 0 4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  height: 1px;
+  flex: 1;
+  content: "";
+  background: var(--border);
+}
+
+.auth-divider span { white-space: nowrap; }
+
 form { margin-top: 22px; text-align: left; }
 
 label { display: block; margin-top: 16px; }

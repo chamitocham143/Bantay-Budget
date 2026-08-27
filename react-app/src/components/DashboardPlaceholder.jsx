@@ -18,8 +18,11 @@ import SettingsPage from "./SettingsPage.jsx";
 import FaqPage from "./FaqPage.jsx";
 import AboutPage from "./AboutPage.jsx";
 import { exportBackup, readBackupFile, restoreBackup } from "../services/backup.js";
-import { APP_LOCK_KEY, useInactivityLock } from "../hooks/useInactivityLock.js";
-import AppLockScreen from "./AppLockScreen.jsx";
+import {
+  APP_LOCK_KEY,
+  recordAuthenticatedActivity,
+  useInactivityLock,
+} from "../hooks/useInactivityLock.js";
 import FinanceTip from "./FinanceTip.jsx";
 import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
@@ -30,7 +33,6 @@ import {
   disableBiometricUnlock,
   enableBiometricUnlock,
   getBiometricUnlockStatus,
-  verifyBiometricUnlock,
 } from "../services/biometricUnlock.js";
 import BottomActionBar from "./BottomActionBar";
 import Calculator from "./Calculator.jsx";  
@@ -125,7 +127,7 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const notificationData = useNotifications(user.uid);
   const currentMonth = getLocalMonthString();
   const [selectedYear, selectedMonthNumber] = selectedMonth.split("-");
-  const { locked: appLocked, unlock: unlockApp } = useInactivityLock(appLockEnabled);
+  useInactivityLock(appLockEnabled, onSignOut);
   const { targetRef: pullTargetRef, pulling, refreshing, } = usePullToRefresh(Boolean(analyticsMetric));
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
 
@@ -388,6 +390,7 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const openAbout = () => { setSettingsOpen(false); setFaqOpen(false); setAboutOpen(true); };
   const toggleAppLock = (enabled) => {
     localStorage.setItem(APP_LOCK_KEY, String(enabled));
+    if (enabled) recordAuthenticatedActivity();
     setAppLockEnabled(enabled);
   };
 
@@ -399,30 +402,25 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
       if (enabled) {
         await enableBiometricUnlock();
         setBiometricUnlockEnabled(true);
-        setBiometricMessage({ type: "success", text: "Face ID / device unlock is ready on this device." });
+        setBiometricMessage({ type: "success", text: "Face ID login is ready on this device." });
       } else {
         await disableBiometricUnlock();
         setBiometricUnlockEnabled(false);
-        setBiometricMessage({ type: "success", text: "Face ID / device unlock was removed from this device." });
+        setBiometricMessage({ type: "success", text: "Face ID login was removed from this device." });
       }
     } catch (biometricError) {
       if (biometricError?.name !== "NotAllowedError") {
-        console.error("Unable to update biometric unlock:", biometricError);
+        console.error("Unable to update Face ID login:", biometricError);
       }
       setBiometricMessage({
         type: "error",
         text: biometricError?.name === "NotAllowedError"
           ? "Device authentication was canceled. No changes were made."
-          : biometricError?.message || "Unable to update Face ID / device unlock.",
+          : biometricError?.message || "Unable to update Face ID login.",
       });
     } finally {
       setBiometricBusy(false);
     }
-  };
-
-  const handleAppUnlock = async () => {
-    if (biometricUnlockEnabled) await verifyBiometricUnlock();
-    unlockApp();
   };
 
   const handleCsvExport = () => {
@@ -1129,7 +1127,6 @@ const financialScoreAccent =
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
       {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
-      {appLocked && <AppLockScreen biometricEnabled={biometricUnlockEnabled} onUnlock={handleAppUnlock} onSignOut={onSignOut} />}
       {calculatorOpen && ( <Calculator onClose={() => setCalculatorOpen(false)} /> )}
       {monthPickerOpen && (<div className="month-picker-overlay" role="presentation" onClick={() => setMonthPickerOpen(false)}>
       
