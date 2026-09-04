@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, emailRemindersEnabled, emailRemindersBusy, emailRemindersMessage, appLockEnabled, biometricUnlockEnabled, biometricAvailable, biometricBusy, biometricMessage, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleEmailReminders, onToggleAppLock, onToggleBiometricUnlock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
+function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, emailRemindersEnabled, emailRemindersBusy, emailRemindersMessage, appLockEnabled, biometricUnlockEnabled, biometricAvailable, biometricBusy, biometricMessage, accountMessage, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleEmailReminders, onToggleAppLock, onToggleBiometricUnlock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onChangeEmail, onDeleteAccount, onLogout }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -80,9 +80,11 @@ function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnab
 
         <div className="settings-section-label">Account</div>
         <section className="settings-list">
-          <div className="settings-static-row"><span>✉️</span><div><strong>Email</strong><small>{email}</small></div></div>
+          <button type="button" onClick={onChangeEmail}><span>✉️</span><div><strong>Change Email</strong><small>{email}</small></div><i>›</i></button>
           <div className="settings-static-row"><span>🛡️</span><div><strong>Email verification</strong><small>Verified</small></div><em>✓</em></div>
+          <button className="settings-delete-account" type="button" onClick={onDeleteAccount}><span>⚠️</span><div><strong>Delete Account</strong><small>Permanently remove your account and data</small></div><i>›</i></button>
         </section>
+        {accountMessage && <div className={`form-message ${accountMessage.type}`} role="status">{accountMessage.text}</div>}
 
         <button className="settings-logout" type="button" onClick={onLogout}>Sign Out</button>
         <footer className="settings-footer"><strong>Bantay Budget</strong><span>Version 1.0.0</span></footer>

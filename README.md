@@ -43,12 +43,15 @@ Bantay Budget is a mobile-first personal finance Progressive Web App for trackin
 
 - Firebase email/password authentication
 - Required email verification, password reset, and verification-email resend
+- Verified email-address changes protected by current-password reauthentication
+- Permanent self-service account deletion with recursive user-data cleanup
 - Optional Face ID/passkey login on enrolled devices using WebAuthn
 - Automatic Firebase sign-out after three minutes of inactivity
 - Persistent inactivity checks when the PWA is suspended, closed, or reopened
 - Email/password remains available as a recovery and fallback method
 - User-scoped Firestore security rules
 - Passkey challenges and public credentials are server-managed; biometric data never leaves the device
+- Account deletion removes the Auth user and the complete Firestore user document tree
 
 ### PWA and data tools
 

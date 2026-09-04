@@ -89,6 +89,11 @@ export function biometricLoginIsEnabledOnDevice() {
     && Boolean(localStorage.getItem(BIOMETRIC_LOGIN_UID_KEY));
 }
 
+export function clearBiometricLoginState() {
+  localStorage.setItem(BIOMETRIC_UNLOCK_KEY, "false");
+  localStorage.removeItem(BIOMETRIC_LOGIN_UID_KEY);
+}
+
 export async function signInWithBiometric() {
   const uid = localStorage.getItem(BIOMETRIC_LOGIN_UID_KEY);
 

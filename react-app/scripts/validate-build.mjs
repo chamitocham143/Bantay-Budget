@@ -63,6 +63,23 @@ if (!authSource.includes("Sign in with Face ID") || !authSource.includes("biomet
   throw new Error("Opt-in Face ID login validation failed.");
 }
 
+const accountManagementSources = await Promise.all([
+  readFile(resolve("src/services/accountManagement.js"), "utf8"),
+  readFile(resolve("src/components/ChangeEmailModal.jsx"), "utf8"),
+  readFile(resolve("src/components/DeleteAccountModal.jsx"), "utf8"),
+  readFile(resolve("../functions/index.js"), "utf8"),
+]);
+if (
+  !accountManagementSources[0].includes("verifyBeforeUpdateEmail")
+  || !accountManagementSources[0].includes("reauthenticateWithCredential")
+  || !accountManagementSources[1].includes("Your email changes only after")
+  || !accountManagementSources[2].includes('confirmation !== "DELETE"')
+  || !accountManagementSources[3].includes("db.recursiveDelete")
+  || !accountManagementSources[3].includes("admin.auth().deleteUser")
+) {
+  throw new Error("Secure account-management validation failed.");
+}
+
 const emailReminderSources = await Promise.all([
   readFile(resolve("src/services/emailReminders.js"), "utf8"),
   readFile(resolve("src/components/SettingsPage.jsx"), "utf8"),

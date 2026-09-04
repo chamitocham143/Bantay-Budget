@@ -17,9 +17,12 @@ import ProfileDrawer from "./ProfileDrawer.jsx";
 import SettingsPage from "./SettingsPage.jsx";
 import FaqPage from "./FaqPage.jsx";
 import AboutPage from "./AboutPage.jsx";
+import ChangeEmailModal from "./ChangeEmailModal.jsx";
+import DeleteAccountModal from "./DeleteAccountModal.jsx";
 import { exportBackup, readBackupFile, restoreBackup } from "../services/backup.js";
 import {
   APP_LOCK_KEY,
+  LAST_ACTIVITY_KEY,
   recordAuthenticatedActivity,
   useInactivityLock,
 } from "../hooks/useInactivityLock.js";
@@ -35,10 +38,15 @@ import {
 import {
   BIOMETRIC_UNLOCK_KEY,
   biometricUnlockIsAvailable,
+  clearBiometricLoginState,
   disableBiometricUnlock,
   enableBiometricUnlock,
   getBiometricUnlockStatus,
 } from "../services/biometricUnlock.js";
+import {
+  deleteUserAccount,
+  requestEmailChange,
+} from "../services/accountManagement.js";
 import BottomActionBar from "./BottomActionBar";
 import Calculator from "./Calculator.jsx";  
 import FinancialAnalytics from "./FinancialAnalytics.jsx";
@@ -111,6 +119,9 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const [testPushMessage, setTestPushMessage] = useState(null);
   const [testEmailBusy, setTestEmailBusy] = useState(false);
   const [testEmailMessage, setTestEmailMessage] = useState(null);
+  const [accountAction, setAccountAction] = useState(null);
+  const [accountBusy, setAccountBusy] = useState(false);
+  const [accountMessage, setAccountMessage] = useState(null);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [analyticsMetric, setAnalyticsMetric] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
@@ -511,6 +522,36 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
       });
     } finally {
       setTestEmailBusy(false);
+    }
+  };
+
+  const handleEmailChange = async (newEmail, password) => {
+    setAccountBusy(true);
+    setAccountMessage(null);
+
+    try {
+      await requestEmailChange(newEmail, password);
+      setAccountAction(null);
+      setAccountMessage({
+        type: "success",
+        text: `Verification sent to ${newEmail}. Your current email remains active until you approve it.`,
+      });
+    } finally {
+      setAccountBusy(false);
+    }
+  };
+
+  const handleDeleteAccount = async (password) => {
+    setAccountBusy(true);
+
+    try {
+      await deleteUserAccount(password);
+      clearBiometricLoginState();
+      localStorage.setItem(PUSH_ENABLED_KEY, "false");
+      localStorage.removeItem(APP_LOCK_KEY);
+      localStorage.removeItem(LAST_ACTIVITY_KEY);
+    } finally {
+      setAccountBusy(false);
     }
   };
 
@@ -1188,7 +1229,9 @@ const financialScoreAccent =
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
       {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onCalculator={() => setCalculatorOpen(true)} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} emailRemindersEnabled={emailRemindersEnabled} emailRemindersBusy={emailRemindersBusy} emailRemindersMessage={emailRemindersMessage} appLockEnabled={appLockEnabled} biometricUnlockEnabled={biometricUnlockEnabled} biometricAvailable={biometricAvailable} biometricBusy={biometricBusy} biometricMessage={biometricMessage} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleEmailReminders={toggleEmailReminders} onToggleAppLock={toggleAppLock} onToggleBiometricUnlock={toggleBiometricUnlock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} emailRemindersEnabled={emailRemindersEnabled} emailRemindersBusy={emailRemindersBusy} emailRemindersMessage={emailRemindersMessage} appLockEnabled={appLockEnabled} biometricUnlockEnabled={biometricUnlockEnabled} biometricAvailable={biometricAvailable} biometricBusy={biometricBusy} biometricMessage={biometricMessage} accountMessage={accountMessage} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleEmailReminders={toggleEmailReminders} onToggleAppLock={toggleAppLock} onToggleBiometricUnlock={toggleBiometricUnlock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onChangeEmail={() => { setAccountMessage(null); setAccountAction("email"); }} onDeleteAccount={() => { setAccountMessage(null); setAccountAction("delete"); }} onLogout={requestLogout} />}
+      {accountAction === "email" && <ChangeEmailModal currentEmail={user.email} busy={accountBusy} onClose={() => setAccountAction(null)} onSubmit={handleEmailChange} />}
+      {accountAction === "delete" && <DeleteAccountModal email={user.email} busy={accountBusy} onClose={() => setAccountAction(null)} onSubmit={handleDeleteAccount} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
