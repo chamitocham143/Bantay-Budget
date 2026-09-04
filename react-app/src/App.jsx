@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { auth, db } from "./firebase.js";
 import AuthScreen from "./components/AuthScreen.jsx";
@@ -59,11 +59,34 @@ function App() {
             doc(db, "users", nextUser.uid)
           );
 
-          setProfile(
-            profileSnapshot.exists()
-              ? profileSnapshot.data()
-              : null
-          );
+          const profileData = profileSnapshot.exists()
+            ? profileSnapshot.data()
+            : null;
+
+          if (profileData && profileData.email !== nextUser.email) {
+            const synchronizedProfile = {
+              ...profileData,
+              email: nextUser.email,
+              emailUpdatedAt: Date.now(),
+            };
+
+            try {
+              await setDoc(
+                doc(db, "users", nextUser.uid),
+                {
+                  email: nextUser.email,
+                  emailUpdatedAt: synchronizedProfile.emailUpdatedAt,
+                },
+                { merge: true },
+              );
+            } catch (synchronizationError) {
+              console.error("Unable to synchronize the verified email:", synchronizationError);
+            }
+
+            setProfile(synchronizedProfile);
+          } else {
+            setProfile(profileData);
+          }
         } catch (error) {
           console.error(
             "Unable to load user profile:",

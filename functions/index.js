@@ -1144,3 +1144,33 @@ exports.removeBiometricUnlock = onCall(async (request) => {
 
   return { removed: snapshot.size };
 });
+
+/* =========================================================
+   ACCOUNT DELETION
+========================================================= */
+
+exports.deleteAccount = onCall(async (request) => {
+  const uid = requireAuthenticatedUser(request);
+  const authenticatedAt = Number(request.auth?.token?.auth_time || 0);
+  const authenticationAge = Math.floor(Date.now() / 1000) - authenticatedAt;
+
+  if (!authenticatedAt || authenticationAge < 0 || authenticationAge > 5 * 60) {
+    throw new HttpsError(
+      "failed-precondition",
+      "Please verify your password again before deleting your account.",
+    );
+  }
+
+  try {
+    await db.recursiveDelete(db.collection("users").doc(uid));
+    await admin.auth().deleteUser(uid);
+    logger.info("User account permanently deleted", { uid });
+    return { deleted: true };
+  } catch (error) {
+    logger.error("Unable to delete user account", { uid, error: error.message });
+    throw new HttpsError(
+      "internal",
+      "Unable to delete the account. Please try again.",
+    );
+  }
+});

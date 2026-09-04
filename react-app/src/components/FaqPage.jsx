@@ -11,6 +11,8 @@ const faqItems = [
   ["How do email reminders work?", "Email Reminders are optional and off by default. When enabled, Bantay Budget sends one message to your verified account email three days before an unpaid recurring expense is due."],
   ["How does automatic sign-out work?", "When enabled, Bantay Budget signs you out after three minutes without touch, keyboard, mouse, or scrolling activity. If the app was suspended, it checks the elapsed time when you return."],
   ["How does Face ID Login work?", "When enabled in Settings, a Face ID button appears on this device's login page. A passkey verifies you before Firebase signs you in. Your face or fingerprint data stays on your device, and email and password remain available as a fallback."],
+  ["How do I change my email?", "Open Settings and choose Change Email. Confirm your current password, then approve the verification link sent to the new address. Your old email remains active until verification is complete."],
+  ["How do I delete my account?", "Open Settings and choose Delete Account. After password verification and final confirmation, your account and stored Bantay Budget records are permanently deleted. Export a backup first if you may need your records later."],
   ["Are my backups uploaded anywhere?", "No. Exported backup files are downloaded directly to your device and are not stored by Bantay Budget."],
 ];
 
