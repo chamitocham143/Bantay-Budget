@@ -320,6 +320,18 @@ function normalizeEmailDescription(value) {
     .slice(0, 120) || "Recurring payment";
 }
 
+async function getEmailGreetingName(uid) {
+  const profileSnapshot = await db
+    .collection("users")
+    .doc(uid)
+    .get();
+  const fullName = String(profileSnapshot.data()?.name || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return fullName ? fullName.split(" ")[0].slice(0, 60) : "there";
+}
+
 async function emailRemindersAreEnabled(uid) {
   const snapshot = await db
     .collection("users")
@@ -377,11 +389,13 @@ async function sendDueEmailOnce(uid, recurringId, recurring, dueDetails) {
 
   const description = normalizeEmailDescription(recurring.desc);
   const safeDescription = escapeEmailHtml(description);
+  const greetingName = await getEmailGreetingName(uid);
+  const safeGreetingName = escapeEmailHtml(greetingName);
   const formattedDueDate = formatEmailDueDate(dueDetails.dueDateString);
   const result = await sendResendEmail(uid, {
     subject: `${description} is due in 3 days`,
-    text: `${description} is due on ${formattedDueDate}. Open Bantay Budget to review the amount and status: https://bantaybudget.fyi`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#12352f"><h1 style="color:#005346">Payment reminder</h1><p><strong>${safeDescription}</strong> is due in 3 days.</p><p>Due date: <strong>${escapeEmailHtml(formattedDueDate)}</strong></p><p><a href="https://bantaybudget.fyi" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#005346;color:#fff;text-decoration:none;font-weight:700">Open Bantay Budget</a></p><p style="margin-top:24px;color:#64748b;font-size:12px">You received this because Email Reminders are enabled in Bantay Budget Settings.</p></div>`,
+    text: `Hi ${greetingName},\n\nQuick reminder that your ${description} is due in 3 days.\n\nDue date: ${formattedDueDate}\n\nOpen Bantay Budget: https://bantaybudget.fyi`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#12352f"><p>Hi ${safeGreetingName},</p><p>Quick reminder that your <strong>${safeDescription}</strong> is due in 3 days.</p><p>Due date: <strong>${escapeEmailHtml(formattedDueDate)}</strong></p><p><a href="https://bantaybudget.fyi" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#005346;color:#fff;text-decoration:none;font-weight:700">Open Bantay Budget</a></p><p style="margin-top:24px;color:#64748b;font-size:12px">You received this because Email Reminders are enabled in Bantay Budget Settings.</p></div>`,
     idempotencyKey: `due-${uid}-${reminderId}`,
   });
 
