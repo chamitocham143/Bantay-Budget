@@ -8,6 +8,7 @@ const faqItems = [
   ["What is Allocable Balance?", "Allocable Balance is the money available after paid expenses are deducted.", "Total Income − Total Paid"],
   ["What is Remaining Balance?", "Remaining Balance estimates how much will remain after pending expenses are settled.", "Allocable Balance − Total Pending"],
   ["How do recurring expenses work?", "Each active template creates one duplicate-safe expense per month. New generated expenses begin On Hold."],
+  ["How do email reminders work?", "Email Reminders are optional and off by default. When enabled, Bantay Budget sends one message to your verified account email three days before an unpaid recurring expense is due."],
   ["How does automatic sign-out work?", "When enabled, Bantay Budget signs you out after three minutes without touch, keyboard, mouse, or scrolling activity. If the app was suspended, it checks the elapsed time when you return."],
   ["How does Face ID Login work?", "When enabled in Settings, a Face ID button appears on this device's login page. A passkey verifies you before Firebase signs you in. Your face or fingerprint data stays on your device, and email and password remain available as a fallback."],
   ["Are my backups uploaded anywhere?", "No. Exported backup files are downloaded directly to your device and are not stored by Bantay Budget."],

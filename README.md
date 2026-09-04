@@ -33,9 +33,11 @@ Bantay Budget is a mobile-first personal finance Progressive Web App for trackin
 
 - In-app recurring-due notifications with unread badges
 - Web push notifications across registered devices
+- Optional, duplicate-safe email reminders sent three days before recurring dues
 - Scheduled daily reminder processing through Firebase Cloud Functions
 - Mark individual or all notifications as read and clean up older notifications
 - App-icon badge counts on supported devices
+- Resend transactional email delivery with credentials stored in Firebase Secret Manager
 
 ### Authentication and security
 
@@ -67,6 +69,7 @@ Bantay Budget is a mobile-first personal finance Progressive Web App for trackin
 - Firebase Cloud Messaging
 - Firebase Hosting
 - WebAuthn/passkeys with SimpleWebAuthn
+- Resend email API
 - Progressive Web App manifest and service worker
 
 ## Project structure
@@ -154,6 +157,14 @@ firebase deploy --only functions,firestore:rules,hosting
 ```
 
 The Cloud Functions service account needs the **Service Account Token Creator** role so Firebase can create custom tokens after successful passkey verification.
+
+Email reminders require a Resend API key stored in Firebase Secret Manager:
+
+```bash
+firebase functions:secrets:set RESEND_API_KEY
+```
+
+The sending domain must be verified in Resend. Reminder messages are sent from `reminders@bantaybudget.fyi`.
 
 ## Privacy and security notes
 

@@ -28,6 +28,11 @@ import { exportMonthlyCsv } from "../services/csvExport.js";
 import { usePullToRefresh } from "../hooks/usePullToRefresh.js";
 import { sendTestPush } from "../services/developerTools.js";
 import {
+  getEmailReminderStatus,
+  sendTestEmailReminder,
+  setEmailReminderStatus,
+} from "../services/emailReminders.js";
+import {
   BIOMETRIC_UNLOCK_KEY,
   biometricUnlockIsAvailable,
   disableBiometricUnlock,
@@ -83,6 +88,9 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const [pushEnabled, setPushEnabled] = useState(() => localStorage.getItem(PUSH_ENABLED_KEY) === "true");
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMessage, setPushMessage] = useState(null);
+  const [emailRemindersEnabled, setEmailRemindersEnabled] = useState(false);
+  const [emailRemindersBusy, setEmailRemindersBusy] = useState(false);
+  const [emailRemindersMessage, setEmailRemindersMessage] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmLogout, setConfirmLogout] = useState(false);
@@ -101,6 +109,8 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
   const [developerEnabled, setDeveloperEnabled] = useState(false);
   const [testPushBusy, setTestPushBusy] = useState(false);
   const [testPushMessage, setTestPushMessage] = useState(null);
+  const [testEmailBusy, setTestEmailBusy] = useState(false);
+  const [testEmailMessage, setTestEmailMessage] = useState(null);
   const [calculatorOpen, setCalculatorOpen] = useState(false);
   const [analyticsMetric, setAnalyticsMetric] = useState(null);
   const name = profile?.name || user.email?.split("@")[0] || "User";
@@ -156,6 +166,20 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
     loadBiometricState();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    getEmailReminderStatus(user.uid)
+      .then((enabled) => {
+        if (active) setEmailRemindersEnabled(enabled);
+      })
+      .catch((statusError) => {
+        console.error("Unable to load email reminder status:", statusError);
+      });
+
+    return () => { active = false; };
+  }, [user.uid]);
 
   const saveInflow = async (values) => {
     setMutationError("");
@@ -423,6 +447,30 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
     }
   };
 
+  const toggleEmailReminders = async (enabled) => {
+    setEmailRemindersBusy(true);
+    setEmailRemindersMessage(null);
+
+    try {
+      await setEmailReminderStatus(user.uid, enabled);
+      setEmailRemindersEnabled(enabled);
+      setEmailRemindersMessage({
+        type: "success",
+        text: enabled
+          ? `Email reminders will be sent to ${user.email}.`
+          : "Email reminders are turned off.",
+      });
+    } catch (emailError) {
+      console.error("Unable to update email reminders:", emailError);
+      setEmailRemindersMessage({
+        type: "error",
+        text: "Unable to update email reminders. Please try again.",
+      });
+    } finally {
+      setEmailRemindersBusy(false);
+    }
+  };
+
   const handleCsvExport = () => {
     setDrawerOpen(false);
     setActionMessage(null);
@@ -445,6 +493,24 @@ function DashboardPlaceholder({ user, profile, theme,currency, onCurrencyChange,
       setTestPushMessage({ type: "error", text: testError.message || "Unable to send a test push." });
     } finally {
       setTestPushBusy(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    setTestEmailBusy(true);
+    setTestEmailMessage(null);
+
+    try {
+      await sendTestEmailReminder();
+      setTestEmailMessage({ type: "success", text: `Test email sent to ${user.email}.` });
+    } catch (testError) {
+      console.error("Test email reminder error:", testError);
+      setTestEmailMessage({
+        type: "error",
+        text: testError?.message || "Unable to send a test email reminder.",
+      });
+    } finally {
+      setTestEmailBusy(false);
     }
   };
 
@@ -1122,11 +1188,11 @@ const financialScoreAccent =
       {templateToDelete && <ConfirmDialog title="Delete Recurring Template?" message={`Delete ${templateToDelete.desc}? Existing generated monthly expenses will remain in your history.`} busy={mutationBusy} onCancel={() => { setTemplateToDelete(null); setRecurringManagerOpen(true); }} onConfirm={deleteRecurringTemplate} />}
       {notificationsOpen && <NotificationsPage {...notificationData} pushEnabled={pushEnabled} pushBusy={pushBusy} pushMessage={pushMessage} onClose={() => setNotificationsOpen(false)} onTogglePush={togglePushNotifications} onMarkRead={notificationData.markRead} onMarkAllRead={notificationData.markAllRead} onClearOld={notificationData.clearOld} />}
       {drawerOpen && <ProfileDrawer name={name} email={user.email} theme={theme} unreadCount={notificationData.unreadCount} onCalculator={() => setCalculatorOpen(true)} onClose={() => setDrawerOpen(false)} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onSettings={openSettings} onToggleTheme={onToggleTheme} onLogout={requestLogout} />}
-      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} appLockEnabled={appLockEnabled} biometricUnlockEnabled={biometricUnlockEnabled} biometricAvailable={biometricAvailable} biometricBusy={biometricBusy} biometricMessage={biometricMessage} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleAppLock={toggleAppLock} onToggleBiometricUnlock={toggleBiometricUnlock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
+      {settingsOpen && <SettingsPage name={name} email={user.email} theme={theme} pushEnabled={pushEnabled} emailRemindersEnabled={emailRemindersEnabled} emailRemindersBusy={emailRemindersBusy} emailRemindersMessage={emailRemindersMessage} appLockEnabled={appLockEnabled} biometricUnlockEnabled={biometricUnlockEnabled} biometricAvailable={biometricAvailable} biometricBusy={biometricBusy} biometricMessage={biometricMessage} currency={currency} onCurrencyChange={onCurrencyChange} unreadCount={notificationData.unreadCount} backupBusy={backupBusy} backupMessage={backupMessage} onClose={() => setSettingsOpen(false)} onToggleTheme={onToggleTheme} onToggleEmailReminders={toggleEmailReminders} onToggleAppLock={toggleAppLock} onToggleBiometricUnlock={toggleBiometricUnlock} onNotifications={openNotifications} onRecurring={openRecurringManager} onExportCsv={handleCsvExport} onExportBackup={handleExportBackup} onRestoreFile={handleRestoreFile} onFaq={openFaq} onAbout={openAbout} onLogout={requestLogout} />}
       {confirmLogout && <ConfirmDialog title="Sign Out?" message="Are you sure you want to sign out of Bantay Budget on this device?" busy={logoutBusy} onCancel={() => setConfirmLogout(false)} onConfirm={confirmSignOut} />}
       {backupToRestore && <ConfirmDialog title="Restore Backup?" message={`Replace your current inflows, expenses, and recurring expenses using ${backupToRestore.fileName}? This cannot be undone unless you export your current data first.`} busy={backupBusy} onCancel={() => setBackupToRestore(null)} onConfirm={confirmRestoreBackup} />}
       {faqOpen && <FaqPage onClose={() => { setFaqOpen(false); setSettingsOpen(true); }} />}
-      {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); }} onTestPush={handleTestPush} />}
+      {aboutOpen && <AboutPage developerEnabled={developerEnabled} testPushBusy={testPushBusy} testPushMessage={testPushMessage} testEmailBusy={testEmailBusy} testEmailMessage={testEmailMessage} emailRemindersEnabled={emailRemindersEnabled} onClose={() => { setAboutOpen(false); setSettingsOpen(true); }} onFaq={openFaq} onToggleDeveloper={() => { setDeveloperEnabled((enabled) => !enabled); setTestPushMessage(null); setTestEmailMessage(null); }} onTestPush={handleTestPush} onTestEmail={handleTestEmail} />}
       {calculatorOpen && ( <Calculator onClose={() => setCalculatorOpen(false)} /> )}
       {monthPickerOpen && (<div className="month-picker-overlay" role="presentation" onClick={() => setMonthPickerOpen(false)}>
       
