@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, appLockEnabled, biometricUnlockEnabled, biometricAvailable, biometricBusy, biometricMessage, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleAppLock, onToggleBiometricUnlock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
+function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnabled, emailRemindersEnabled, emailRemindersBusy, emailRemindersMessage, appLockEnabled, biometricUnlockEnabled, biometricAvailable, biometricBusy, biometricMessage, unreadCount, backupBusy, backupMessage, onClose, onToggleTheme, onToggleEmailReminders, onToggleAppLock, onToggleBiometricUnlock, onNotifications, onRecurring, onExportCsv, onExportBackup, onRestoreFile, onFaq, onAbout, onLogout }) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -50,10 +50,12 @@ function SettingsPage({ name, email, theme, currency, onCurrencyChange, pushEnab
   </select>
 </div>
           <button type="button" onClick={onNotifications}><span>🔔</span><div><strong>Notifications</strong><small>{pushEnabled ? "Push enabled on this device" : "Push disabled on this device"}</small></div>{unreadCount > 0 ? <b>{unreadCount}</b> : <i>›</i>}</button>
+          <div className="settings-toggle-row"><span>✉️</span><div><strong>Email Reminders</strong><small>{emailRemindersEnabled ? `Send 3-day reminders to ${email}` : "Optional reminders for recurring dues"}</small></div><label className="switch-control"><input type="checkbox" checked={emailRemindersEnabled} disabled={emailRemindersBusy} onChange={(event) => onToggleEmailReminders(event.target.checked)} /><span /></label></div>
           <button type="button" onClick={onRecurring}><span>↻</span><div><strong>Recurring Expenses</strong><small>Manage monthly templates</small></div><i>›</i></button>
           <div className="settings-toggle-row"><span>⏱️</span><div><strong>Automatic Sign-Out</strong><small>Sign out after 3 minutes of inactivity</small></div><label className="switch-control"><input type="checkbox" checked={appLockEnabled} onChange={(event) => onToggleAppLock(event.target.checked)} /><span /></label></div>
           <div className="settings-toggle-row"><span>◉</span><div><strong>Face ID Login</strong><small>{biometricAvailable === false ? "Not available in this browser" : biometricUnlockEnabled ? "Shown on the login page on this device" : "Sign in securely without typing your password"}</small></div><label className="switch-control"><input type="checkbox" checked={biometricUnlockEnabled} disabled={biometricAvailable !== true || biometricBusy} onChange={(event) => onToggleBiometricUnlock(event.target.checked)} /><span /></label></div>
         </section>
+        {emailRemindersMessage && <div className={`form-message ${emailRemindersMessage.type}`} role="status">{emailRemindersMessage.text}</div>}
         {biometricMessage && <div className={`form-message ${biometricMessage.type}`} role="status">{biometricMessage.text}</div>}
         <p className="settings-note">Changing tabs, windows, or apps does not trigger an immediate sign-out. When you return, Bantay Budget checks whether three inactive minutes have elapsed.</p>
         <p className="settings-note">Face ID data never leaves your device. iOS may offer the device passcode as a secure fallback.</p>

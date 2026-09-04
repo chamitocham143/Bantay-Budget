@@ -10,6 +10,9 @@ const {
 const {
   logger,
 } = require("firebase-functions");
+const {
+  defineSecret,
+} = require("firebase-functions/params");
 
 const admin = require("firebase-admin");
 const {
@@ -22,6 +25,8 @@ const {
 admin.initializeApp();
 
 const db = admin.firestore();
+const RESEND_API_KEY = defineSecret("RESEND_API_KEY");
+const EMAIL_FROM = "Bantay Budget <reminders@bantaybudget.fyi>";
 
 const WEBAUTHN_RP_NAME = "Bantay Budget";
 const WEBAUTHN_CHALLENGE_TTL = 5 * 60 * 1000;
@@ -292,6 +297,140 @@ async function sendPushToUserDevices(
   return response.successCount;
 }
 
+function escapeEmailHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatEmailDueDate(dueDate) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }).format(new Date(`${dueDate}T12:00:00Z`));
+}
+
+function normalizeEmailDescription(value) {
+  return String(value || "Recurring payment")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 120) || "Recurring payment";
+}
+
+async function getEmailGreetingName(uid) {
+  const profileSnapshot = await db
+    .collection("users")
+    .doc(uid)
+    .get();
+  const fullName = String(profileSnapshot.data()?.name || "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return fullName ? fullName.split(" ")[0].slice(0, 60) : "there";
+}
+
+async function emailRemindersAreEnabled(uid) {
+  const snapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("settings")
+    .doc("emailReminders")
+    .get();
+
+  return snapshot.exists && snapshot.data().enabled === true;
+}
+
+async function sendResendEmail(uid, { subject, text, html, idempotencyKey }) {
+  const userRecord = await admin.auth().getUser(uid);
+
+  if (!userRecord.email || !userRecord.emailVerified || userRecord.disabled) {
+    throw new Error("The Firebase account does not have an eligible verified email address.");
+  }
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY.value()}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": idempotencyKey,
+    },
+    body: JSON.stringify({
+      from: EMAIL_FROM,
+      to: [userRecord.email],
+      subject,
+      text,
+      html,
+    }),
+  });
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(`Resend rejected the reminder (${response.status}): ${result.message || "Unknown error"}`);
+  }
+
+  return result;
+}
+
+async function sendDueEmailOnce(uid, recurringId, recurring, dueDetails) {
+  if (!(await emailRemindersAreEnabled(uid))) return false;
+
+  const reminderId = `${recurringId}_${dueDetails.dueDateString}`;
+  const deliveryRef = db
+    .collection("users")
+    .doc(uid)
+    .collection("emailReminders")
+    .doc(reminderId);
+  const existingDelivery = await deliveryRef.get();
+
+  if (existingDelivery.exists && existingDelivery.data().sentAt) return false;
+
+  const description = normalizeEmailDescription(recurring.desc);
+  const safeDescription = escapeEmailHtml(description);
+  const greetingName = await getEmailGreetingName(uid);
+  const safeGreetingName = escapeEmailHtml(greetingName);
+  const formattedDueDate = formatEmailDueDate(dueDetails.dueDateString);
+  const result = await sendResendEmail(uid, {
+    subject: `${description} is due in 3 days`,
+    text: `Hi ${greetingName},\n\nQuick reminder that your ${description} is due in 3 days.\n\nDue date: ${formattedDueDate}\n\nOpen Bantay Budget: https://bantaybudget.fyi`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#12352f"><p>Hi ${safeGreetingName},</p><p>Quick reminder that your <strong>${safeDescription}</strong> is due in 3 days.</p><p>Due date: <strong>${escapeEmailHtml(formattedDueDate)}</strong></p><p><a href="https://bantaybudget.fyi" style="display:inline-block;padding:12px 18px;border-radius:10px;background:#005346;color:#fff;text-decoration:none;font-weight:700">Open Bantay Budget</a></p><p style="margin-top:24px;color:#64748b;font-size:12px">You received this because Email Reminders are enabled in Bantay Budget Settings.</p></div>`,
+    idempotencyKey: `due-${uid}-${reminderId}`,
+  });
+
+  await deliveryRef.set({
+    type: "RECURRING_DUE_EMAIL",
+    recurringTemplateId: recurringId,
+    dueDate: dueDetails.dueDateString,
+    providerMessageId: result.id || null,
+    sentAt: Date.now(),
+  });
+
+  return true;
+}
+
+async function sendDueEmailSafely(uid, recurringId, recurring, dueDetails, reminderId) {
+  try {
+    const emailSent = await sendDueEmailOnce(
+      uid,
+      recurringId,
+      recurring,
+      dueDetails,
+    );
+
+    if (emailSent) {
+      logger.info(`Due reminder email sent for ${uid}: ${reminderId}`);
+    }
+  } catch (emailError) {
+    logger.error("Unable to send due reminder email", {
+      uid,
+      reminderId,
+      error: emailError.message,
+    });
+  }
+}
+
 /* =========================================================
    NOTIFICATION CLEANUP
 ========================================================= */
@@ -337,6 +476,7 @@ exports.dailyReminder = onSchedule(
   {
     schedule: "every day 08:00",
     timeZone: "America/Los_Angeles",
+    secrets: [RESEND_API_KEY],
   },
 
   async () => {
@@ -429,6 +569,17 @@ exports.dailyReminder = onSchedule(
           `${dueDetails.year}_` +
           `${dueDetails.month}`;
 
+        /*
+         * Keep the existing notification ID format
+         * so previously created notifications remain
+         * duplicate-safe.
+         */
+        const notificationId =
+          `${recurringDoc.id}_` +
+          `${dueDetails.year}_` +
+          `${dueDetails.monthIndex + 1}_` +
+          `${dueDetails.dueDay}`;
+
         const expenseRef = db
           .collection("users")
           .doc(uid)
@@ -439,6 +590,21 @@ exports.dailyReminder = onSchedule(
           await expenseRef.get();
 
         if (!expenseSnapshot.exists) {
+          /*
+           * Email delivery is based on the active template,
+           * so it still works when the user has not opened the
+           * app recently enough to generate this month's record.
+           */
+          if (diffDays === 3) {
+            await sendDueEmailSafely(
+              uid,
+              recurringDoc.id,
+              recurring,
+              dueDetails,
+              notificationId,
+            );
+          }
+
           logger.info(
             `Skipping ${uid}: generated expense ` +
             `${expenseId} was not found`
@@ -530,16 +696,15 @@ exports.dailyReminder = onSchedule(
             `Payment due in ${diffDays} days`;
         }
 
-        /*
-         * Keep the existing notification ID format
-         * so previously created notifications remain
-         * duplicate-safe.
-         */
-        const notificationId =
-          `${recurringDoc.id}_` +
-          `${dueDetails.year}_` +
-          `${dueDetails.monthIndex + 1}_` +
-          `${dueDetails.dueDay}`;
+        if (diffDays === 3) {
+          await sendDueEmailSafely(
+            uid,
+            recurringDoc.id,
+            recurring,
+            dueDetails,
+            notificationId,
+          );
+        }
 
         const notificationRef = db
           .collection("users")
@@ -645,6 +810,31 @@ exports.sendTestPush = onCall(
         "device(s)!",
     };
   }
+);
+
+exports.sendTestEmailReminder = onCall(
+  { secrets: [RESEND_API_KEY] },
+  async (request) => {
+    const uid = requireAuthenticatedUser(request);
+
+    if (!(await emailRemindersAreEnabled(uid))) {
+      throw new HttpsError("failed-precondition", "Enable Email Reminders in Settings first.");
+    }
+
+    try {
+      const result = await sendResendEmail(uid, {
+        subject: "Bantay Budget email reminders are ready",
+        text: "This is a test reminder from Bantay Budget. Your email reminders are configured correctly.",
+        html: '<div style="font-family:Arial,sans-serif;max-width:560px;margin:auto;color:#12352f"><h1 style="color:#005346">Email reminders are ready</h1><p>This is a test reminder from Bantay Budget.</p><p>Your verified account email can now receive recurring-payment reminders three days before they are due.</p></div>',
+        idempotencyKey: `test-${uid}-${Date.now()}`,
+      });
+
+      return { success: true, messageId: result.id || null };
+    } catch (error) {
+      logger.error("Unable to send test email reminder", { uid, error: error.message });
+      throw new HttpsError("internal", "Unable to send the test email reminder.");
+    }
+  },
 );
 
 /* =========================================================

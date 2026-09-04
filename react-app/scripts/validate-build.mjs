@@ -63,6 +63,22 @@ if (!authSource.includes("Sign in with Face ID") || !authSource.includes("biomet
   throw new Error("Opt-in Face ID login validation failed.");
 }
 
+const emailReminderSources = await Promise.all([
+  readFile(resolve("src/services/emailReminders.js"), "utf8"),
+  readFile(resolve("src/components/SettingsPage.jsx"), "utf8"),
+  readFile(resolve("../functions/index.js"), "utf8"),
+]);
+if (
+  !emailReminderSources[0].includes('"emailReminders"')
+  || !emailReminderSources[0].includes("sendTestEmailReminder")
+  || !emailReminderSources[1].includes("Email Reminders")
+  || !emailReminderSources[2].includes('defineSecret("RESEND_API_KEY")')
+  || !emailReminderSources[2].includes("diffDays === 3")
+  || !emailReminderSources[2].includes("sendDueEmailSafely")
+) {
+  throw new Error("Optional email-reminder validation failed.");
+}
+
 const budgetSource = await readFile(resolve("src/hooks/useBudgetData.js"), "utf8");
 if (!budgetSource.includes("inflowTotal - expenseTotals.paidTotal") || !budgetSource.includes("allocable - expenseTotals.pendingTotal")) {
   throw new Error("Financial calculation invariants are missing.");
