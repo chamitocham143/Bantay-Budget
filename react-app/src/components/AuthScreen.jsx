@@ -208,12 +208,18 @@ function AuthScreen({ theme, onToggleTheme }) {
             {biometricLoginEnabled && (
               <>
                 <button
-                  className="biometric-login-button"
+                  className={`biometric-login-button${biometricBusy ? " is-verifying" : ""}`}
                   disabled={busy || biometricBusy}
                   type="button"
                   onClick={handleBiometricLogin}
+                  aria-busy={biometricBusy}
                 >
-                  {biometricBusy ? "Verifying…" : "◉ Sign in with Face ID"}
+                  {biometricBusy ? (
+                    <>
+                      <span className="biometric-button-spinner" aria-hidden="true" />
+                      <span>Verifying…</span>
+                    </>
+                  ) : "◉ Sign in with Face ID"}
                 </button>
                 <div className="auth-divider"><span>or use email and password</span></div>
               </>

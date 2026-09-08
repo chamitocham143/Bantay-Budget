@@ -146,14 +146,54 @@ h2 { margin: 8px 0 0; font-size: 28px; }
 }
 
 .biometric-login-button {
+  position: relative;
   width: 100%;
   min-height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  overflow: hidden;
   border: 1px solid rgb(16 185 129 / 34%);
   border-radius: 15px;
   color: white;
   background: linear-gradient(135deg, #07806c, #005346);
   box-shadow: 0 10px 24px rgb(0 83 70 / 22%);
   font-weight: 800;
+}
+
+.biometric-login-button.is-verifying:disabled {
+  opacity: 1;
+  animation: biometric-button-pulse 1.4s ease-in-out infinite;
+}
+
+.biometric-login-button.is-verifying::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / 18%) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: biometric-button-shimmer 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.biometric-button-spinner {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 2px solid rgb(255 255 255 / 35%);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+}
+
+@keyframes biometric-button-pulse {
+  0%, 100% { box-shadow: 0 10px 24px rgb(0 83 70 / 22%); }
+  50% { box-shadow: 0 12px 30px rgb(16 185 129 / 42%); }
+}
+
+@keyframes biometric-button-shimmer {
+  55%, 100% { transform: translateX(100%); }
 }
 
 .auth-divider {
