@@ -8,6 +8,7 @@ registerAppServiceWorker();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
+    <div className="status-bar-material" aria-hidden="true" />
     <App />
   </StrictMode>,
 );
