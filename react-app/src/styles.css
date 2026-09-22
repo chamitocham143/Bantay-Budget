@@ -4779,9 +4779,16 @@ input:focus,
 @keyframes bounce { 0%, 80%, 100% { transform: scale(0.65); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
 
 @media (max-width: 520px) {
-  .auth-screen { padding: 76px 14px 24px; align-items: start; }
+  .auth-screen { padding: 88px 14px 24px; align-items: start; }
   .auth-card { padding: 36px 20px; border-top-left-radius: 24px; border-top-right-radius: 24px; }
-  .dashboard-shell { padding: 20px 14px; }
+  .theme-button { top: 30px; }
+  .dashboard-shell { padding: 32px 14px 20px; }
+  .notifications-header,
+  .settings-header { height: 84px; padding-top: 12px; }
+  .profile-drawer { padding-top: 36px; }
+  .financial-analytics-header {
+    padding-top: calc(24px + env(safe-area-inset-top));
+  }
   .dashboard-topbar { align-items: flex-start; }
   .dashboard-topbar h1 { font-size: clamp(26px, 8vw, 36px); }
   .topbar-actions { flex: 0 0 auto; gap: 7px; }
